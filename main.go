@@ -34,12 +34,13 @@ func main() {
 	commit := buildCommit()
 	ok, commitMessage := isDeploymentCommit(commit)
 	if !ok {
-		fmt.Println("Commit is not a deployment commit")
+		fmt.Println("Commit is not a deployment commit:", commit.commitMessage)
 		return
 	}
 
 	// TODO: Delete this after debugging!
 	if commitMessage.domain != "mas-billing" {
+		fmt.Println("Skipping non-mas-billing domain:", commitMessage.domain)
 		return
 	}
 
