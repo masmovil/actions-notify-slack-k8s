@@ -47,7 +47,7 @@ func main() {
 	// Example: "#deploys-mas-billing-prod"
 	slackChannel := "#deploys-" + commitMessage.domain + "-" + commitMessage.environment
 
-	message := fmt.Sprintf("Deployed %s `%s` version `%s` to %s`", commitMessage.domain, commitMessage.service, commitMessage.version, commitMessage.environment)
+	message := fmt.Sprintf("Deployed %s `%s` version `%s` to %s", commitMessage.domain, commitMessage.service, commitMessage.version, commitMessage.environment)
 	ts := sendMessageToChannel(slackClient, slackChannel, message)
 	fmt.Println("ts:", ts)
 
@@ -115,7 +115,7 @@ func sendMessageToChannel(client *slack.Client, slackChannel, message string) st
 	return ts
 }
 
-func sendMessageAsReply(client *slack.Client, slackChannel, message string, ts string) {
+func sendMessageAsReply(client *slack.Client, slackChannel, ts string, message string) {
 	respChannel, ts, err := client.PostMessage(slackChannel, slack.MsgOptionText(message, false), slack.MsgOptionAsUser(true), slack.MsgOptionTS(ts))
 	if err != nil {
 		fmt.Println("got error posting message reply to slack channel:", err)
