@@ -47,15 +47,19 @@ func main() {
 	// Example: "#deploys-mas-billing-prod"
 	slackChannel := "#deploys-" + commitMessage.domain + "-" + commitMessage.environment
 
-	message := fmt.Sprintf("Deployed %s %s version %s to %s", commitMessage.domain, commitMessage.service, commitMessage.version, commitMessage.environment)
-	messageId := sendMessageToChannel(slackClient, slackChannel, message)
-	fmt.Println("messageId:", messageId)
+	message := fmt.Sprintf("Deployed %s `%s` version `%s` to %s`", commitMessage.domain, commitMessage.service, commitMessage.version, commitMessage.environment)
+	ts := sendMessageToChannel(slackClient, slackChannel, message)
+	fmt.Println("ts:", ts)
 
 	// Add rest of the commit message if it exists
 	if len(strings.Split(commit.commitMessage, "\n")) > 1 {
-		messageResponse := fmt.Sprintf("\n%s", strings.Split(commit.commitMessage, "\n")[1:])
-		// Send the rest of the commit message as a response to the original message
-		fmt.Println(messageResponse)
+		// Remove the commit message header
+		commitBody := strings.TrimSpace(strings.Join(strings.Split(commit.commitMessage, "\n")[1:], "\n"))
+		fmt.Println("commitBody:", commitBody)
+
+		// Send the rest of the commit message as a response to the original message using the thread ts
+		message = fmt.Sprintf("```%s```", commitBody)
+		sendMessageAsReply(slackClient, slackChannel, ts, message)
 	}
 
 	return
@@ -102,11 +106,21 @@ func isDeploymentCommit(commit Commit) (ok bool, commitMessage CommitMessageDeta
 }
 
 func sendMessageToChannel(client *slack.Client, slackChannel, message string) string {
-	respChannel, respTimestamp, err := client.PostMessage(slackChannel, slack.MsgOptionText(message, false), slack.MsgOptionAsUser(true))
+	respChannel, ts, err := client.PostMessage(slackChannel, slack.MsgOptionText(message, false), slack.MsgOptionAsUser(true))
 	if err != nil {
 		fmt.Println("got error posting message to slack channel:", err)
 		return ""
 	}
-	fmt.Println("message sent to channel", respChannel, "at", respTimestamp)
-	return respChannel
+	fmt.Println("message sent to channel", respChannel, "with id", ts)
+	return ts
+}
+
+func sendMessageAsReply(client *slack.Client, slackChannel, message string, ts string) {
+	respChannel, ts, err := client.PostMessage(slackChannel, slack.MsgOptionText(message, false), slack.MsgOptionAsUser(true), slack.MsgOptionTS(ts))
+	if err != nil {
+		fmt.Println("got error posting message reply to slack channel:", err)
+		return
+	}
+	fmt.Println("message reply sent to channel", respChannel, "with id", ts)
+	return
 }
