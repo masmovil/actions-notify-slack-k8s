@@ -47,7 +47,7 @@ func main() {
 	// Example: "#deploys-mas-billing-prod"
 	slackChannel := "#deploys-" + commitMessage.domain + "-" + commitMessage.environment
 
-	message := fmt.Sprintf("Deployed %s `%s` version `%s` to %s", commitMessage.domain, commitMessage.service, commitMessage.version, commitMessage.environment)
+	message := fmt.Sprintf("Deployed %s `%s` version `%s` to <%s|%s> by _%s_", commitMessage.domain, commitMessage.service, commitMessage.version, commitMessage.environment, commit.url, commit.authorUsername)
 	ts := sendMessageToChannel(slackClient, slackChannel, message)
 	fmt.Println("ts:", ts)
 
@@ -55,7 +55,6 @@ func main() {
 	if len(strings.Split(commit.commitMessage, "\n")) > 1 {
 		// Remove the commit message header
 		commitBody := strings.TrimSpace(strings.Join(strings.Split(commit.commitMessage, "\n")[1:], "\n"))
-		fmt.Println("commitBody:", commitBody)
 
 		// Send the rest of the commit message as a response to the original message using the thread ts
 		message = fmt.Sprintf("```%s```", commitBody)
