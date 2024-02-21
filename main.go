@@ -38,12 +38,6 @@ func main() {
 		return
 	}
 
-	// TODO: Delete this after debugging!
-	if commitMessage.domain != "mas-billing" {
-		fmt.Println("Skipping non-mas-billing domain:", commitMessage.domain)
-		return
-	}
-
 	// Example: "#deploys-mas-billing-prod"
 	slackChannel := "#deploys-" + commitMessage.domain + "-" + commitMessage.environment
 
@@ -88,8 +82,7 @@ func isDeploymentCommit(commit Commit) (ok bool, commitMessage CommitMessageDeta
 	pattern := `Deployed\s(\w\S+)\s(\w\S+)\sversion\s(v\d+\.\d+\.\d+)\sto\s(prod|sta|dev)`
 	re := regexp.MustCompile(pattern)
 
-	commitMessageFirstLine := strings.Split(commit.commitMessage, "\n")[0]
-	matches := re.FindStringSubmatch(commitMessageFirstLine)
+	matches := re.FindStringSubmatch(commit.getCommitMessageTitle())
 	if len(matches) == 0 {
 		ok = false
 		return
