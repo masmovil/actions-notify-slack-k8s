@@ -78,7 +78,7 @@ func buildCommit() (commit Commit) {
 
 func isDeploymentCommit(commit Commit) (ok bool, commitMessage CommitMessageDetails) {
 	// Example: "Deployed mas-billing api-billing version v1.37.0 to prod"
-	pattern := `Deployed\s+(\w+)\s+(\w+)\s+version\s+(v\d+\.\d+\.\d+)\s+to\s+(prod|sta|dev)`
+	pattern := `Deployed\s(\w\S+)\s(\w\S+)\sversion\s(v\d+\.\d+\.\d+)\sto\s(prod|sta|dev)`
 	re := regexp.MustCompile(pattern)
 
 	commitMessageFirstLine := strings.Split(commit.commitMessage, "\n")[0]
