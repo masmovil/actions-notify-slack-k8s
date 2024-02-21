@@ -47,7 +47,10 @@ func main() {
 	// Example: "#deploys-mas-billing-prod"
 	slackChannel := "#deploys-" + commitMessage.domain + "-" + commitMessage.environment
 
-	message := fmt.Sprintf("Deployed %s `%s` version `%s` to <%s|%s> by _%s_", commitMessage.domain, commitMessage.service, commitMessage.version, commitMessage.environment, commit.url, commit.authorUsername)
+	message := fmt.Sprintf("Deployed %s `%s` version `%s` to <%s|%s>", commitMessage.domain, commitMessage.service, commitMessage.version, commit.url, commitMessage.environment)
+	if commit.authorUsername != "" {
+		message += fmt.Sprintf(" by _%s_", commit.authorUsername)
+	}
 	ts := sendMessageToChannel(slackClient, slackChannel, message)
 	fmt.Println("ts:", ts)
 
