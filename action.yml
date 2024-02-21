@@ -4,9 +4,6 @@ inputs:
   slack-access-token:
     description: 'Access token for Slack, used to match commit emails to usernames'
     required: true
-  slack-channel-name:
-    description: 'Slack channel name where the action will post messages'
-    required: true
   commit-url:
     description: 'Github commit URL'
     required: true
@@ -24,7 +21,6 @@ runs:
   image: 'Dockerfile'
   args:
     - ${{ inputs.slack-access-token }}
-    - ${{ inputs.slack-channel-name }}
     - ${{ inputs.commit-url }}
     - ${{ inputs.commit-author-username }}
     - ${{ inputs.commit-author-email }}
