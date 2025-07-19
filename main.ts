@@ -106,36 +106,58 @@ export function isDeploymentCommit(commit: Commit): {
   ok: boolean;
   commitMessage: CommitMessageDetails;
 } {
+  // Try v1 format first
   // Examples: "Deployed mas-billing api-billing version v1.37.0 to prod"
   //           "Deployed mas-billing api-billing version v1.37.0-RC.2 to sta"
   //           "Deployed mas-billing api-billing version v1.37.0 to STA"
-  const pattern =
+  const v1Pattern =
     /Deployed\s(\w\S+)\s(\w\S+)\sversion\s(v\d+\.\d+\.\d+\S*)\sto\s(prod|sta|dev)/i;
-  const matches = getCommitMessageTitle(commit).match(pattern);
+  const v1Matches = getCommitMessageTitle(commit).match(v1Pattern);
 
-  if (!matches || matches.length === 0) {
-    return {
-      ok: false,
-      commitMessage: {
-        domain: "",
-        service: "",
-        version: "",
-        environment: "",
-      },
+  if (v1Matches && v1Matches.length > 0) {
+    const commitMessage: CommitMessageDetails = {
+      domain: v1Matches[1],
+      service: v1Matches[2],
+      version: v1Matches[3],
+      environment: v1Matches[4],
     };
+
+    console.log("matched v1 string:", v1Matches[0]);
+    console.log("commitMessageDetails:", commitMessage);
+
+    return { ok: true, commitMessage };
   }
 
-  const commitMessage: CommitMessageDetails = {
-    domain: matches[1],
-    service: matches[2],
-    version: matches[3],
-    environment: matches[4],
+  // Try v2 format
+  // Example: "Deploy mas-billing rating-engine version v1.132.5 to prod"
+  const v2Pattern =
+    /Deploy\s(\w\S+)\s(\w\S+)\sversion\s(v\d+\.\d+\.\d+\S*)\sto\s(prod|sta|dev)/i;
+  const v2Matches = getCommitMessageTitle(commit).match(v2Pattern);
+
+  if (v2Matches && v2Matches.length > 0) {
+    const commitMessage: CommitMessageDetails = {
+      domain: v2Matches[1],
+      service: v2Matches[2],
+      version: v2Matches[3],
+      environment: v2Matches[4],
+    };
+
+    console.log("matched v2 string:", v2Matches[0]);
+    console.log("commitMessageDetails:", commitMessage);
+
+    return { ok: true, commitMessage };
+  }
+
+  // No match found
+  return {
+    ok: false,
+    commitMessage: {
+      domain: "",
+      service: "",
+      version: "",
+      environment: "",
+    },
   };
-
-  console.log("matched string:", matches[0]);
-  console.log("commitMessageDetails:", commitMessage);
-
-  return { ok: true, commitMessage };
 }
 
 async function sendMessageToChannel(
