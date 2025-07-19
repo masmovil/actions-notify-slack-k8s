@@ -2,9 +2,9 @@ import * as core from "@actions/core";
 import { WebClient } from "@slack/web-api";
 
 // Load environment variables when running locally
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== "test") {
   try {
-    require('dotenv').config();
+    require("dotenv").config();
   } catch (e) {
     // dotenv not available, continue without it
   }
@@ -17,18 +17,18 @@ function getInputWithFallback(name: string): string {
   if (actionInput) {
     return actionInput;
   }
-  
+
   // Fallback to environment variable for local testing
   const envMap: { [key: string]: string } = {
-    'slack-access-token': 'SLACK_ACCESS_TOKEN',
-    'commit-url': 'COMMIT_URL',
-    'commit-author-username': 'COMMIT_AUTHOR_USERNAME',
-    'commit-author-email': 'COMMIT_AUTHOR_EMAIL',
-    'commit-message': 'COMMIT_MESSAGE'
+    "slack-access-token": "SLACK_ACCESS_TOKEN",
+    "commit-url": "COMMIT_URL",
+    "commit-author-username": "COMMIT_AUTHOR_USERNAME",
+    "commit-author-email": "COMMIT_AUTHOR_EMAIL",
+    "commit-message": "COMMIT_MESSAGE",
   };
-  
+
   const envVar = envMap[name];
-  return envVar ? (process.env[envVar] || '') : '';
+  return envVar ? process.env[envVar] || "" : "";
 }
 
 export interface Commit {

@@ -1,6 +1,216 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 8415:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.buildCommit = buildCommit;
+exports.isDeploymentCommit = isDeploymentCommit;
+const core = __importStar(__nccwpck_require__(7484));
+const web_api_1 = __nccwpck_require__(5105);
+// Load environment variables when running locally
+if (process.env.NODE_ENV !== 'test') {
+    try {
+        (__nccwpck_require__(8889).config)();
+    }
+    catch (e) {
+        // dotenv not available, continue without it
+    }
+}
+// Helper function to get input with fallback to environment variables
+function getInputWithFallback(name) {
+    // Try to get from GitHub Actions input first
+    const actionInput = core.getInput(name);
+    if (actionInput) {
+        return actionInput;
+    }
+    // Fallback to environment variable for local testing
+    const envMap = {
+        'slack-access-token': 'SLACK_ACCESS_TOKEN',
+        'commit-url': 'COMMIT_URL',
+        'commit-author-username': 'COMMIT_AUTHOR_USERNAME',
+        'commit-author-email': 'COMMIT_AUTHOR_EMAIL',
+        'commit-message': 'COMMIT_MESSAGE'
+    };
+    const envVar = envMap[name];
+    return envVar ? (process.env[envVar] || '') : '';
+}
+function getCommitMessageTitle(commit) {
+    return commit.commitMessage.split("\n")[0];
+}
+function main() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            console.log("Running actions-notify-slack-k8s");
+            const slackClient = getSlackClient();
+            const commit = buildCommit();
+            const { ok, commitMessage } = isDeploymentCommit(commit);
+            if (!ok) {
+                console.log("Commit is not a deployment commit:", commit.commitMessage);
+                return;
+            }
+            // Example: "#deploys-mas-billing-prod"
+            const slackChannel = `#deploys-${commitMessage.domain}-${commitMessage.environment}`;
+            let message = `:rocket: Deployed ${commitMessage.domain} \`${commitMessage.service}\` version \`${commitMessage.version}\` to <${commit.url}|${commitMessage.environment}>`;
+            if (commit.authorUsername !== "") {
+                message += ` by _${commit.authorUsername}_`;
+            }
+            const ts = yield sendMessageToChannel(slackClient, slackChannel, message);
+            console.log("ts:", ts);
+            // Add rest of the commit message if it exists
+            const commitLines = commit.commitMessage.split("\n");
+            if (commitLines.length > 1) {
+                // Remove the commit message header
+                const commitBody = commitLines.slice(1).join("\n").trim();
+                // Send the rest of the commit message as a response to the original message using the thread ts
+                const replyMessage = `\`\`\`${commitBody}\`\`\``;
+                yield sendMessageAsReply(slackClient, slackChannel, ts, replyMessage);
+            }
+        }
+        catch (error) {
+            core.setFailed(error instanceof Error ? error.message : String(error));
+        }
+    });
+}
+function getSlackClient() {
+    const accessToken = getInputWithFallback("slack-access-token");
+    return new web_api_1.WebClient(accessToken);
+}
+function buildCommit() {
+    return {
+        url: getInputWithFallback("commit-url"),
+        authorUsername: getInputWithFallback("commit-author-username"),
+        authorEmail: getInputWithFallback("commit-author-email"),
+        commitMessage: getInputWithFallback("commit-message"),
+    };
+}
+function isDeploymentCommit(commit) {
+    // Try v1 format first
+    // Examples: "Deployed mas-billing api-billing version v1.37.0 to prod"
+    //           "Deployed mas-billing api-billing version v1.37.0-RC.2 to sta"
+    //           "Deployed mas-billing api-billing version v1.37.0 to STA"
+    const v1Pattern = /Deployed\s(\w\S+)\s(\w\S+)\sversion\s(v\d+\.\d+\.\d+\S*)\sto\s(prod|sta|dev)/i;
+    const v1Matches = getCommitMessageTitle(commit).match(v1Pattern);
+    if (v1Matches && v1Matches.length > 0) {
+        const commitMessage = {
+            domain: v1Matches[1],
+            service: v1Matches[2],
+            version: v1Matches[3],
+            environment: v1Matches[4],
+        };
+        console.log("matched v1 string:", v1Matches[0]);
+        console.log("commitMessageDetails:", commitMessage);
+        return { ok: true, commitMessage };
+    }
+    // Try v2 format
+    // Example: "Deploy mas-billing rating-engine version v1.132.5 to prod"
+    const v2Pattern = /Deploy\s(\w\S+)\s(\w\S+)\sversion\s(v\d+\.\d+\.\d+\S*)\sto\s(prod|sta|dev)/i;
+    const v2Matches = getCommitMessageTitle(commit).match(v2Pattern);
+    if (v2Matches && v2Matches.length > 0) {
+        const commitMessage = {
+            domain: v2Matches[1],
+            service: v2Matches[2],
+            version: v2Matches[3],
+            environment: v2Matches[4],
+        };
+        console.log("matched v2 string:", v2Matches[0]);
+        console.log("commitMessageDetails:", commitMessage);
+        return { ok: true, commitMessage };
+    }
+    // No match found
+    return {
+        ok: false,
+        commitMessage: {
+            domain: "",
+            service: "",
+            version: "",
+            environment: "",
+        },
+    };
+}
+function sendMessageToChannel(client, slackChannel, message) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const result = yield client.chat.postMessage({
+                channel: slackChannel,
+                text: message,
+                as_user: true,
+            });
+            console.log("message sent to channel", result.channel, "with id", result.ts);
+            return result.ts || "";
+        }
+        catch (error) {
+            console.log("got error posting message to slack channel:", error);
+            return "";
+        }
+    });
+}
+function sendMessageAsReply(client, slackChannel, ts, message) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const result = yield client.chat.postMessage({
+                channel: slackChannel,
+                text: message,
+                as_user: true,
+                thread_ts: ts,
+            });
+            console.log("message reply sent to channel", result.channel, "with id", result.ts);
+        }
+        catch (error) {
+            console.log("got error posting message reply to slack channel:", error);
+        }
+    });
+}
+main();
+
+
+/***/ }),
+
 /***/ 4914:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -7920,6 +8130,441 @@ DelayedStream.prototype._checkIfMaxDataSizeExceeded = function() {
     'DelayedStream#maxDataSize of ' + this.maxDataSize + ' bytes exceeded.'
   this.emit('error', new Error(message));
 };
+
+
+/***/ }),
+
+/***/ 8889:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const fs = __nccwpck_require__(9896)
+const path = __nccwpck_require__(6928)
+const os = __nccwpck_require__(857)
+const crypto = __nccwpck_require__(6982)
+const packageJson = __nccwpck_require__(56)
+
+const version = packageJson.version
+
+// Array of tips to display randomly
+const TIPS = [
+  '🔐 encrypt with dotenvx: https://dotenvx.com',
+  '🔐 prevent committing .env to code: https://dotenvx.com/precommit',
+  '🔐 prevent building .env in docker: https://dotenvx.com/prebuild',
+  '🛠️  run anywhere with `dotenvx run -- yourcommand`',
+  '⚙️  specify custom .env file path with { path: \'/custom/path/.env\' }',
+  '⚙️  enable debug logging with { debug: true }',
+  '⚙️  override existing env vars with { override: true }',
+  '⚙️  suppress all logs with { quiet: true }',
+  '⚙️  write to custom object with { processEnv: myObject }',
+  '⚙️  load multiple .env files with { path: [\'.env.local\', \'.env\'] }'
+]
+
+// Get a random tip from the tips array
+function _getRandomTip () {
+  return TIPS[Math.floor(Math.random() * TIPS.length)]
+}
+
+function parseBoolean (value) {
+  if (typeof value === 'string') {
+    return !['false', '0', 'no', 'off', ''].includes(value.toLowerCase())
+  }
+  return Boolean(value)
+}
+
+function supportsAnsi () {
+  return process.stdout.isTTY // && process.env.TERM !== 'dumb'
+}
+
+function dim (text) {
+  return supportsAnsi() ? `\x1b[2m${text}\x1b[0m` : text
+}
+
+const LINE = /(?:^|^)\s*(?:export\s+)?([\w.-]+)(?:\s*=\s*?|:\s+?)(\s*'(?:\\'|[^'])*'|\s*"(?:\\"|[^"])*"|\s*`(?:\\`|[^`])*`|[^#\r\n]+)?\s*(?:#.*)?(?:$|$)/mg
+
+// Parse src into an Object
+function parse (src) {
+  const obj = {}
+
+  // Convert buffer to string
+  let lines = src.toString()
+
+  // Convert line breaks to same format
+  lines = lines.replace(/\r\n?/mg, '\n')
+
+  let match
+  while ((match = LINE.exec(lines)) != null) {
+    const key = match[1]
+
+    // Default undefined or null to empty string
+    let value = (match[2] || '')
+
+    // Remove whitespace
+    value = value.trim()
+
+    // Check if double quoted
+    const maybeQuote = value[0]
+
+    // Remove surrounding quotes
+    value = value.replace(/^(['"`])([\s\S]*)\1$/mg, '$2')
+
+    // Expand newlines if double quoted
+    if (maybeQuote === '"') {
+      value = value.replace(/\\n/g, '\n')
+      value = value.replace(/\\r/g, '\r')
+    }
+
+    // Add to object
+    obj[key] = value
+  }
+
+  return obj
+}
+
+function _parseVault (options) {
+  options = options || {}
+
+  const vaultPath = _vaultPath(options)
+  options.path = vaultPath // parse .env.vault
+  const result = DotenvModule.configDotenv(options)
+  if (!result.parsed) {
+    const err = new Error(`MISSING_DATA: Cannot parse ${vaultPath} for an unknown reason`)
+    err.code = 'MISSING_DATA'
+    throw err
+  }
+
+  // handle scenario for comma separated keys - for use with key rotation
+  // example: DOTENV_KEY="dotenv://:key_1234@dotenvx.com/vault/.env.vault?environment=prod,dotenv://:key_7890@dotenvx.com/vault/.env.vault?environment=prod"
+  const keys = _dotenvKey(options).split(',')
+  const length = keys.length
+
+  let decrypted
+  for (let i = 0; i < length; i++) {
+    try {
+      // Get full key
+      const key = keys[i].trim()
+
+      // Get instructions for decrypt
+      const attrs = _instructions(result, key)
+
+      // Decrypt
+      decrypted = DotenvModule.decrypt(attrs.ciphertext, attrs.key)
+
+      break
+    } catch (error) {
+      // last key
+      if (i + 1 >= length) {
+        throw error
+      }
+      // try next key
+    }
+  }
+
+  // Parse decrypted .env string
+  return DotenvModule.parse(decrypted)
+}
+
+function _warn (message) {
+  console.error(`[dotenv@${version}][WARN] ${message}`)
+}
+
+function _debug (message) {
+  console.log(`[dotenv@${version}][DEBUG] ${message}`)
+}
+
+function _log (message) {
+  console.log(`[dotenv@${version}] ${message}`)
+}
+
+function _dotenvKey (options) {
+  // prioritize developer directly setting options.DOTENV_KEY
+  if (options && options.DOTENV_KEY && options.DOTENV_KEY.length > 0) {
+    return options.DOTENV_KEY
+  }
+
+  // secondary infra already contains a DOTENV_KEY environment variable
+  if (process.env.DOTENV_KEY && process.env.DOTENV_KEY.length > 0) {
+    return process.env.DOTENV_KEY
+  }
+
+  // fallback to empty string
+  return ''
+}
+
+function _instructions (result, dotenvKey) {
+  // Parse DOTENV_KEY. Format is a URI
+  let uri
+  try {
+    uri = new URL(dotenvKey)
+  } catch (error) {
+    if (error.code === 'ERR_INVALID_URL') {
+      const err = new Error('INVALID_DOTENV_KEY: Wrong format. Must be in valid uri format like dotenv://:key_1234@dotenvx.com/vault/.env.vault?environment=development')
+      err.code = 'INVALID_DOTENV_KEY'
+      throw err
+    }
+
+    throw error
+  }
+
+  // Get decrypt key
+  const key = uri.password
+  if (!key) {
+    const err = new Error('INVALID_DOTENV_KEY: Missing key part')
+    err.code = 'INVALID_DOTENV_KEY'
+    throw err
+  }
+
+  // Get environment
+  const environment = uri.searchParams.get('environment')
+  if (!environment) {
+    const err = new Error('INVALID_DOTENV_KEY: Missing environment part')
+    err.code = 'INVALID_DOTENV_KEY'
+    throw err
+  }
+
+  // Get ciphertext payload
+  const environmentKey = `DOTENV_VAULT_${environment.toUpperCase()}`
+  const ciphertext = result.parsed[environmentKey] // DOTENV_VAULT_PRODUCTION
+  if (!ciphertext) {
+    const err = new Error(`NOT_FOUND_DOTENV_ENVIRONMENT: Cannot locate environment ${environmentKey} in your .env.vault file.`)
+    err.code = 'NOT_FOUND_DOTENV_ENVIRONMENT'
+    throw err
+  }
+
+  return { ciphertext, key }
+}
+
+function _vaultPath (options) {
+  let possibleVaultPath = null
+
+  if (options && options.path && options.path.length > 0) {
+    if (Array.isArray(options.path)) {
+      for (const filepath of options.path) {
+        if (fs.existsSync(filepath)) {
+          possibleVaultPath = filepath.endsWith('.vault') ? filepath : `${filepath}.vault`
+        }
+      }
+    } else {
+      possibleVaultPath = options.path.endsWith('.vault') ? options.path : `${options.path}.vault`
+    }
+  } else {
+    possibleVaultPath = path.resolve(process.cwd(), '.env.vault')
+  }
+
+  if (fs.existsSync(possibleVaultPath)) {
+    return possibleVaultPath
+  }
+
+  return null
+}
+
+function _resolveHome (envPath) {
+  return envPath[0] === '~' ? path.join(os.homedir(), envPath.slice(1)) : envPath
+}
+
+function _configVault (options) {
+  const debug = parseBoolean(process.env.DOTENV_CONFIG_DEBUG || (options && options.debug))
+  const quiet = parseBoolean(process.env.DOTENV_CONFIG_QUIET || (options && options.quiet))
+
+  if (debug || !quiet) {
+    _log('Loading env from encrypted .env.vault')
+  }
+
+  const parsed = DotenvModule._parseVault(options)
+
+  let processEnv = process.env
+  if (options && options.processEnv != null) {
+    processEnv = options.processEnv
+  }
+
+  DotenvModule.populate(processEnv, parsed, options)
+
+  return { parsed }
+}
+
+function configDotenv (options) {
+  const dotenvPath = path.resolve(process.cwd(), '.env')
+  let encoding = 'utf8'
+  let processEnv = process.env
+  if (options && options.processEnv != null) {
+    processEnv = options.processEnv
+  }
+  let debug = parseBoolean(processEnv.DOTENV_CONFIG_DEBUG || (options && options.debug))
+  let quiet = parseBoolean(processEnv.DOTENV_CONFIG_QUIET || (options && options.quiet))
+
+  if (options && options.encoding) {
+    encoding = options.encoding
+  } else {
+    if (debug) {
+      _debug('No encoding is specified. UTF-8 is used by default')
+    }
+  }
+
+  let optionPaths = [dotenvPath] // default, look for .env
+  if (options && options.path) {
+    if (!Array.isArray(options.path)) {
+      optionPaths = [_resolveHome(options.path)]
+    } else {
+      optionPaths = [] // reset default
+      for (const filepath of options.path) {
+        optionPaths.push(_resolveHome(filepath))
+      }
+    }
+  }
+
+  // Build the parsed data in a temporary object (because we need to return it).  Once we have the final
+  // parsed data, we will combine it with process.env (or options.processEnv if provided).
+  let lastError
+  const parsedAll = {}
+  for (const path of optionPaths) {
+    try {
+      // Specifying an encoding returns a string instead of a buffer
+      const parsed = DotenvModule.parse(fs.readFileSync(path, { encoding }))
+
+      DotenvModule.populate(parsedAll, parsed, options)
+    } catch (e) {
+      if (debug) {
+        _debug(`Failed to load ${path} ${e.message}`)
+      }
+      lastError = e
+    }
+  }
+
+  const populated = DotenvModule.populate(processEnv, parsedAll, options)
+
+  // handle user settings DOTENV_CONFIG_ options inside .env file(s)
+  debug = parseBoolean(processEnv.DOTENV_CONFIG_DEBUG || debug)
+  quiet = parseBoolean(processEnv.DOTENV_CONFIG_QUIET || quiet)
+
+  if (debug || !quiet) {
+    const keysCount = Object.keys(populated).length
+    const shortPaths = []
+    for (const filePath of optionPaths) {
+      try {
+        const relative = path.relative(process.cwd(), filePath)
+        shortPaths.push(relative)
+      } catch (e) {
+        if (debug) {
+          _debug(`Failed to load ${filePath} ${e.message}`)
+        }
+        lastError = e
+      }
+    }
+
+    _log(`injecting env (${keysCount}) from ${shortPaths.join(',')} ${dim(`(tip: ${_getRandomTip()})`)}`)
+  }
+
+  if (lastError) {
+    return { parsed: parsedAll, error: lastError }
+  } else {
+    return { parsed: parsedAll }
+  }
+}
+
+// Populates process.env from .env file
+function config (options) {
+  // fallback to original dotenv if DOTENV_KEY is not set
+  if (_dotenvKey(options).length === 0) {
+    return DotenvModule.configDotenv(options)
+  }
+
+  const vaultPath = _vaultPath(options)
+
+  // dotenvKey exists but .env.vault file does not exist
+  if (!vaultPath) {
+    _warn(`You set DOTENV_KEY but you are missing a .env.vault file at ${vaultPath}. Did you forget to build it?`)
+
+    return DotenvModule.configDotenv(options)
+  }
+
+  return DotenvModule._configVault(options)
+}
+
+function decrypt (encrypted, keyStr) {
+  const key = Buffer.from(keyStr.slice(-64), 'hex')
+  let ciphertext = Buffer.from(encrypted, 'base64')
+
+  const nonce = ciphertext.subarray(0, 12)
+  const authTag = ciphertext.subarray(-16)
+  ciphertext = ciphertext.subarray(12, -16)
+
+  try {
+    const aesgcm = crypto.createDecipheriv('aes-256-gcm', key, nonce)
+    aesgcm.setAuthTag(authTag)
+    return `${aesgcm.update(ciphertext)}${aesgcm.final()}`
+  } catch (error) {
+    const isRange = error instanceof RangeError
+    const invalidKeyLength = error.message === 'Invalid key length'
+    const decryptionFailed = error.message === 'Unsupported state or unable to authenticate data'
+
+    if (isRange || invalidKeyLength) {
+      const err = new Error('INVALID_DOTENV_KEY: It must be 64 characters long (or more)')
+      err.code = 'INVALID_DOTENV_KEY'
+      throw err
+    } else if (decryptionFailed) {
+      const err = new Error('DECRYPTION_FAILED: Please check your DOTENV_KEY')
+      err.code = 'DECRYPTION_FAILED'
+      throw err
+    } else {
+      throw error
+    }
+  }
+}
+
+// Populate process.env with parsed values
+function populate (processEnv, parsed, options = {}) {
+  const debug = Boolean(options && options.debug)
+  const override = Boolean(options && options.override)
+  const populated = {}
+
+  if (typeof parsed !== 'object') {
+    const err = new Error('OBJECT_REQUIRED: Please check the processEnv argument being passed to populate')
+    err.code = 'OBJECT_REQUIRED'
+    throw err
+  }
+
+  // Set process.env
+  for (const key of Object.keys(parsed)) {
+    if (Object.prototype.hasOwnProperty.call(processEnv, key)) {
+      if (override === true) {
+        processEnv[key] = parsed[key]
+        populated[key] = parsed[key]
+      }
+
+      if (debug) {
+        if (override === true) {
+          _debug(`"${key}" is already defined and WAS overwritten`)
+        } else {
+          _debug(`"${key}" is already defined and was NOT overwritten`)
+        }
+      }
+    } else {
+      processEnv[key] = parsed[key]
+      populated[key] = parsed[key]
+    }
+  }
+
+  return populated
+}
+
+const DotenvModule = {
+  configDotenv,
+  _configVault,
+  _parseVault,
+  config,
+  decrypt,
+  parse,
+  populate
+}
+
+module.exports.configDotenv = DotenvModule.configDotenv
+module.exports._configVault = DotenvModule._configVault
+module.exports._parseVault = DotenvModule._parseVault
+module.exports.config = DotenvModule.config
+module.exports.decrypt = DotenvModule.decrypt
+module.exports.parse = DotenvModule.parse
+module.exports.populate = DotenvModule.populate
+
+module.exports = DotenvModule
 
 
 /***/ }),
@@ -41600,6 +42245,14 @@ module.exports = /*#__PURE__*/JSON.parse('{"name":"@slack/web-api","version":"6.
 
 /***/ }),
 
+/***/ 56:
+/***/ ((module) => {
+
+"use strict";
+module.exports = /*#__PURE__*/JSON.parse('{"name":"dotenv","version":"17.2.0","description":"Loads environment variables from .env file","main":"lib/main.js","types":"lib/main.d.ts","exports":{".":{"types":"./lib/main.d.ts","require":"./lib/main.js","default":"./lib/main.js"},"./config":"./config.js","./config.js":"./config.js","./lib/env-options":"./lib/env-options.js","./lib/env-options.js":"./lib/env-options.js","./lib/cli-options":"./lib/cli-options.js","./lib/cli-options.js":"./lib/cli-options.js","./package.json":"./package.json"},"scripts":{"dts-check":"tsc --project tests/types/tsconfig.json","lint":"standard","pretest":"npm run lint && npm run dts-check","test":"tap run --allow-empty-coverage --disable-coverage --timeout=60000","test:coverage":"tap run --show-full-coverage --timeout=60000 --coverage-report=text --coverage-report=lcov","prerelease":"npm test","release":"standard-version"},"repository":{"type":"git","url":"git://github.com/motdotla/dotenv.git"},"homepage":"https://github.com/motdotla/dotenv#readme","funding":"https://dotenvx.com","keywords":["dotenv","env",".env","environment","variables","config","settings"],"readmeFilename":"README.md","license":"BSD-2-Clause","devDependencies":{"@types/node":"^18.11.3","decache":"^4.6.2","sinon":"^14.0.1","standard":"^17.0.0","standard-version":"^9.5.0","tap":"^19.2.0","typescript":"^4.8.4"},"engines":{"node":">=12"},"browser":{"fs":false}}');
+
+/***/ }),
+
 /***/ 1813:
 /***/ ((module) => {
 
@@ -41641,185 +42294,18 @@ module.exports = /*#__PURE__*/JSON.parse('{"application/1d-interleaved-parityfec
 /******/ 	}
 /******/ 	
 /************************************************************************/
-/******/ 	/* webpack/runtime/compat get default export */
-/******/ 	(() => {
-/******/ 		// getDefaultExport function for compatibility with non-harmony modules
-/******/ 		__nccwpck_require__.n = (module) => {
-/******/ 			var getter = module && module.__esModule ?
-/******/ 				() => (module['default']) :
-/******/ 				() => (module);
-/******/ 			__nccwpck_require__.d(getter, { a: getter });
-/******/ 			return getter;
-/******/ 		};
-/******/ 	})();
-/******/ 	
-/******/ 	/* webpack/runtime/define property getters */
-/******/ 	(() => {
-/******/ 		// define getter functions for harmony exports
-/******/ 		__nccwpck_require__.d = (exports, definition) => {
-/******/ 			for(var key in definition) {
-/******/ 				if(__nccwpck_require__.o(definition, key) && !__nccwpck_require__.o(exports, key)) {
-/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
-/******/ 				}
-/******/ 			}
-/******/ 		};
-/******/ 	})();
-/******/ 	
-/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
-/******/ 	(() => {
-/******/ 		__nccwpck_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
-/******/ 	})();
-/******/ 	
-/******/ 	/* webpack/runtime/make namespace object */
-/******/ 	(() => {
-/******/ 		// define __esModule on exports
-/******/ 		__nccwpck_require__.r = (exports) => {
-/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
-/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
-/******/ 			}
-/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
-/******/ 		};
-/******/ 	})();
-/******/ 	
 /******/ 	/* webpack/runtime/compat */
 /******/ 	
 /******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
 /******/ 	
 /************************************************************************/
-var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be in strict mode.
-(() => {
-"use strict";
-__nccwpck_require__.r(__webpack_exports__);
-/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(7484);
-/* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__nccwpck_require__.n(_actions_core__WEBPACK_IMPORTED_MODULE_0__);
-/* harmony import */ var _slack_web_api__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(5105);
-/* harmony import */ var _slack_web_api__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__nccwpck_require__.n(_slack_web_api__WEBPACK_IMPORTED_MODULE_1__);
-var __awaiter = (undefined && undefined.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-
-
-function getCommitMessageTitle(commit) {
-    return commit.commitMessage.split("\n")[0];
-}
-function main() {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            console.log("Running actions-notify-slack-k8s");
-            const slackClient = getSlackClient();
-            const commit = buildCommit();
-            const { ok, commitMessage } = isDeploymentCommit(commit);
-            if (!ok) {
-                console.log("Commit is not a deployment commit:", commit.commitMessage);
-                return;
-            }
-            // Example: "#deploys-mas-billing-prod"
-            const slackChannel = `#deploys-${commitMessage.domain}-${commitMessage.environment}`;
-            let message = `:rocket: Deployed ${commitMessage.domain} \`${commitMessage.service}\` version \`${commitMessage.version}\` to <${commit.url}|${commitMessage.environment}>`;
-            if (commit.authorUsername !== "") {
-                message += ` by _${commit.authorUsername}_`;
-            }
-            const ts = yield sendMessageToChannel(slackClient, slackChannel, message);
-            console.log("ts:", ts);
-            // Add rest of the commit message if it exists
-            const commitLines = commit.commitMessage.split("\n");
-            if (commitLines.length > 1) {
-                // Remove the commit message header
-                const commitBody = commitLines.slice(1).join("\n").trim();
-                // Send the rest of the commit message as a response to the original message using the thread ts
-                const replyMessage = `\`\`\`${commitBody}\`\`\``;
-                yield sendMessageAsReply(slackClient, slackChannel, ts, replyMessage);
-            }
-        }
-        catch (error) {
-            _actions_core__WEBPACK_IMPORTED_MODULE_0__.setFailed(error instanceof Error ? error.message : String(error));
-        }
-    });
-}
-function getSlackClient() {
-    const accessToken = _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("slack-access-token");
-    return new _slack_web_api__WEBPACK_IMPORTED_MODULE_1__.WebClient(accessToken);
-}
-function buildCommit() {
-    return {
-        url: _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("commit-url"),
-        authorUsername: _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("commit-author-username"),
-        authorEmail: _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("commit-author-email"),
-        commitMessage: _actions_core__WEBPACK_IMPORTED_MODULE_0__.getInput("commit-message"),
-    };
-}
-function isDeploymentCommit(commit) {
-    // Examples: "Deployed mas-billing api-billing version v1.37.0 to prod"
-    //           "Deployed mas-billing api-billing version v1.37.0-RC.2 to sta"
-    //           "Deployed mas-billing api-billing version v1.37.0 to STA"
-    const pattern = /Deployed\s(\w\S+)\s(\w\S+)\sversion\s(v\d+\.\d+\.\d+\S*)\sto\s(prod|sta|dev)/i;
-    const matches = getCommitMessageTitle(commit).match(pattern);
-    if (!matches || matches.length === 0) {
-        return {
-            ok: false,
-            commitMessage: {
-                domain: "",
-                service: "",
-                version: "",
-                environment: "",
-            },
-        };
-    }
-    const commitMessage = {
-        domain: matches[1],
-        service: matches[2],
-        version: matches[3],
-        environment: matches[4],
-    };
-    console.log("matched string:", matches[0]);
-    console.log("commitMessageDetails:", commitMessage);
-    return { ok: true, commitMessage };
-}
-function sendMessageToChannel(client, slackChannel, message) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const result = yield client.chat.postMessage({
-                channel: slackChannel,
-                text: message,
-                as_user: true,
-            });
-            console.log("message sent to channel", result.channel, "with id", result.ts);
-            return result.ts || "";
-        }
-        catch (error) {
-            console.log("got error posting message to slack channel:", error);
-            return "";
-        }
-    });
-}
-function sendMessageAsReply(client, slackChannel, ts, message) {
-    return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const result = yield client.chat.postMessage({
-                channel: slackChannel,
-                text: message,
-                as_user: true,
-                thread_ts: ts,
-            });
-            console.log("message reply sent to channel", result.channel, "with id", result.ts);
-        }
-        catch (error) {
-            console.log("got error posting message reply to slack channel:", error);
-        }
-    });
-}
-main();
-
-})();
-
-module.exports = __webpack_exports__;
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	var __webpack_exports__ = __nccwpck_require__(8415);
+/******/ 	module.exports = __webpack_exports__;
+/******/ 	
 /******/ })()
 ;
 //# sourceMappingURL=index.js.map
