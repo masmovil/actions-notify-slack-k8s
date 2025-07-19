@@ -17,11 +17,5 @@ inputs:
     description: 'Github commit message'
     required: true
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
-  args:
-    - ${{ inputs.slack-access-token }}
-    - ${{ inputs.commit-url }}
-    - ${{ inputs.commit-author-username }}
-    - ${{ inputs.commit-author-email }}
-    - ${{ inputs.commit-message }}
+  using: 'node20'
+  main: 'dist/index.js'
