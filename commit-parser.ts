@@ -144,23 +144,6 @@ function matchMultipleDomainsConfig(commitTitle: string): CommitMessageDetails |
     return null;
 }
 
-// Grouped chart deployments pattern
-function matchGroupedChart(commitTitle: string): CommitMessageDetails | null {
-    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+version\s+(v?\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)$/i;
-    const match = commitTitle.match(pattern);
-
-    if (match) {
-        return {
-            domain: match[1],
-            type: CommitType.VERSION,
-            service: match[2],
-            version: match[3],
-            environment: match[4].toLowerCase(),
-        };
-    }
-    return null;
-}
-
 // Legacy v1 format pattern
 function matchLegacyV1Format(commitTitle: string): CommitMessageDetails | null {
     const pattern = /^Deployed\s+(\S+)\s+(\S+)\s+version\s+(v?\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)$/i;
@@ -180,7 +163,7 @@ function matchLegacyV1Format(commitTitle: string): CommitMessageDetails | null {
 
 // Legacy v2 format pattern
 function matchLegacyV2Format(commitTitle: string): CommitMessageDetails | null {
-    const pattern = /Deploy\s(\w\S+)\s(\w\S+)\sversion\s(v\d+\.\d+\.\d+\S*)\sto\s(prod|sta|dev)/i;
+    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+version\s+(v\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)$/i;
     const match = commitTitle.match(pattern);
 
     if (match) {
@@ -211,7 +194,6 @@ export function isDeploymentCommit(commit: Commit): {
         matchMultipleEnvironments,
         matchMultipleDomains,
         matchMultipleDomainsConfig,
-        matchGroupedChart,
         matchLegacyV1Format,
         matchLegacyV2Format,
     ];
