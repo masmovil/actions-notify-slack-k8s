@@ -7,7 +7,7 @@
 import * as core from "@actions/core";
 import * as dotenv from "dotenv";
 import { WebClient } from "@slack/web-api";
-import { isDeploymentCommit, buildCommit, Commit } from "./main";
+import { isDeploymentCommit, Commit } from "./commit-parser";
 
 // Load environment variables from .env file for local testing
 dotenv.config();
@@ -116,7 +116,7 @@ describe("actions-notify-slack-k8s", () => {
           domain: "mas-billing",
           service: "api-billing",
           version: "v1.37.0",
-          environment: "DEV",
+          environment: "dev",
         },
       },
     ];
@@ -211,6 +211,153 @@ describe("actions-notify-slack-k8s", () => {
       expect(result.commitMessage.environment).toBe(
         testCase.expected.environment,
       );
+    });
+  });
+
+  it("should detect single service config changes", () => {
+    const commit: Commit = {
+      url: "https://github.com/test/repo/commit/abc123",
+      authorUsername: "testuser",
+      authorEmail: "test@example.com",
+      commitMessage: "Deploy mas-billing api-billing config changes to prod",
+    };
+
+    const result = isDeploymentCommit(commit);
+
+    expect(result.ok).toBe(true);
+    expect(result.commitMessage.domain).toBe("mas-billing");
+    expect(result.commitMessage.service).toBe("api-billing");
+    expect(result.commitMessage.version).toBe("config");
+    expect(result.commitMessage.environment).toBe("prod");
+  });
+
+  it("should detect multiple services in same domain", () => {
+    const commit: Commit = {
+      url: "https://github.com/test/repo/commit/abc123",
+      authorUsername: "testuser",
+      authorEmail: "test@example.com",
+      commitMessage: "Deploy mas-billing services to prod",
+    };
+
+    const result = isDeploymentCommit(commit);
+
+    expect(result.ok).toBe(true);
+    expect(result.commitMessage.domain).toBe("mas-billing");
+    expect(result.commitMessage.service).toBe("services");
+    expect(result.commitMessage.version).toBe("multiple");
+    expect(result.commitMessage.environment).toBe("prod");
+  });
+
+  it("should detect multiple services config changes in same domain", () => {
+    const commit: Commit = {
+      url: "https://github.com/test/repo/commit/abc123",
+      authorUsername: "testuser",
+      authorEmail: "test@example.com",
+      commitMessage: "Deploy mas-billing services config changes to sta",
+    };
+
+    const result = isDeploymentCommit(commit);
+
+    expect(result.ok).toBe(true);
+    expect(result.commitMessage.domain).toBe("mas-billing");
+    expect(result.commitMessage.service).toBe("services");
+    expect(result.commitMessage.version).toBe("config");
+    expect(result.commitMessage.environment).toBe("sta");
+  });
+
+  it("should detect multiple environments deployment", () => {
+    const commit: Commit = {
+      url: "https://github.com/test/repo/commit/abc123",
+      authorUsername: "testuser",
+      authorEmail: "test@example.com",
+      commitMessage: "Deploy mas-billing services to sta and prod",
+    };
+
+    const result = isDeploymentCommit(commit);
+
+    expect(result.ok).toBe(true);
+    expect(result.commitMessage.domain).toBe("mas-billing");
+    expect(result.commitMessage.service).toBe("services");
+    expect(result.commitMessage.version).toBe("multiple-envs");
+    expect(result.commitMessage.environment).toBe("sta"); // First environment mentioned
+  });
+
+  it("should detect multiple domains deployment", () => {
+    const commit: Commit = {
+      url: "https://github.com/test/repo/commit/abc123",
+      authorUsername: "testuser",
+      authorEmail: "test@example.com",
+      commitMessage: "Deploy multiple services to prod",
+    };
+
+    const result = isDeploymentCommit(commit);
+
+    expect(result.ok).toBe(true);
+    expect(result.commitMessage.domain).toBe("multiple");
+    expect(result.commitMessage.service).toBe("services");
+    expect(result.commitMessage.version).toBe("multiple");
+    expect(result.commitMessage.environment).toBe("prod");
+  });
+
+  it("should detect multiple domains config changes", () => {
+    const commit: Commit = {
+      url: "https://github.com/test/repo/commit/abc123",
+      authorUsername: "testuser",
+      authorEmail: "test@example.com",
+      commitMessage: "Deploy config changes to dev",
+    };
+
+    const result = isDeploymentCommit(commit);
+
+    expect(result.ok).toBe(true);
+    expect(result.commitMessage.domain).toBe("multiple");
+    expect(result.commitMessage.service).toBe("config");
+    expect(result.commitMessage.version).toBe("config");
+    expect(result.commitMessage.environment).toBe("dev");
+  });
+
+  it("should detect grouped chart deployments", () => {
+    const commit: Commit = {
+      url: "https://github.com/test/repo/commit/abc123",
+      authorUsername: "testuser",
+      authorEmail: "test@example.com",
+      commitMessage: "Deploy mas-billing billing-chart version v2.1.0 to prod",
+    };
+
+    const result = isDeploymentCommit(commit);
+
+    expect(result.ok).toBe(true);
+    expect(result.commitMessage.domain).toBe("mas-billing");
+    expect(result.commitMessage.service).toBe("billing-chart");
+    expect(result.commitMessage.version).toBe("v2.1.0");
+    expect(result.commitMessage.environment).toBe("prod");
+  });
+
+  it("should handle different environment combinations in multiple environments", () => {
+    const testCases = [
+      {
+        message: "Deploy payments services to dev and sta",
+        expectedEnv: "dev",
+      },
+      {
+        message: "Deploy billing services to prod and dev",
+        expectedEnv: "prod",
+      },
+    ];
+
+    testCases.forEach((testCase) => {
+      const commit: Commit = {
+        url: "https://github.com/test/repo/commit/abc123",
+        authorUsername: "testuser",
+        authorEmail: "test@example.com",
+        commitMessage: testCase.message,
+      };
+
+      const result = isDeploymentCommit(commit);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.version).toBe("multiple-envs");
+      expect(result.commitMessage.environment).toBe(testCase.expectedEnv);
     });
   });
 });

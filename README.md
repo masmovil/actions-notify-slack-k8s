@@ -1,6 +1,8 @@
 # Slack Notify kubernetes GitHub Action
 
-This action is used to notify deployments in kubernetes via Slack
+This action is used to notify deployments in kubernetes via Slack.
+
+It takes into account different commit message formats to create a more meaningful Slack message.
 
 ## Inputs
 
