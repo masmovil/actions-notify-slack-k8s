@@ -1,6 +1,201 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 6995:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.CommitType = void 0;
+exports.getCommitMessageTitle = getCommitMessageTitle;
+exports.isDeploymentCommit = isDeploymentCommit;
+var CommitType;
+(function (CommitType) {
+    CommitType["VERSION"] = "version";
+    CommitType["CONFIG"] = "config";
+    CommitType["MULTIPLE"] = "multiple";
+})(CommitType || (exports.CommitType = CommitType = {}));
+function getCommitMessageTitle(commit) {
+    return commit.commitMessage.split("\n")[0];
+}
+// Single service with version pattern
+function matchSingleServiceWithVersion(commitTitle) {
+    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+version\s+(v?\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)$/i;
+    const match = commitTitle.match(pattern);
+    if (match) {
+        return {
+            domain: match[1],
+            type: CommitType.VERSION,
+            service: match[2],
+            version: match[3],
+            environment: match[4].toLowerCase(),
+        };
+    }
+    return null;
+}
+// Single service config changes pattern
+function matchSingleServiceConfig(commitTitle) {
+    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+config\s+changes\s+to\s+(prod|sta|dev)$/i;
+    const match = commitTitle.match(pattern);
+    if (match) {
+        return {
+            domain: match[1],
+            type: CommitType.CONFIG,
+            service: match[2],
+            version: "config",
+            environment: match[3].toLowerCase(),
+        };
+    }
+    return null;
+}
+// Multiple services in same domain pattern
+function matchMultipleServices(commitTitle) {
+    const pattern = /^Deploy\s+(\S+)\s+services\s+to\s+(prod|sta|dev)$/i;
+    const match = commitTitle.match(pattern);
+    if (match) {
+        return {
+            domain: match[1],
+            type: CommitType.MULTIPLE,
+            service: "services",
+            version: "multiple",
+            environment: match[2].toLowerCase(),
+        };
+    }
+    return null;
+}
+// Multiple services config changes pattern
+function matchMultipleServicesConfig(commitTitle) {
+    const pattern = /^Deploy\s+(\S+)\s+services\s+config\s+changes\s+to\s+(prod|sta|dev)$/i;
+    const match = commitTitle.match(pattern);
+    if (match) {
+        return {
+            domain: match[1],
+            type: CommitType.CONFIG,
+            service: "services",
+            version: "config",
+            environment: match[2].toLowerCase(),
+        };
+    }
+    return null;
+}
+// Multiple environments pattern
+function matchMultipleEnvironments(commitTitle) {
+    const pattern = /^Deploy\s+(\S+)\s+services\s+to\s+((?:sta|prod|dev)(?:\s+and\s+(?:sta|prod|dev))+)$/i;
+    const match = commitTitle.match(pattern);
+    if (match) {
+        const envs = match[2].toLowerCase();
+        const firstEnv = envs.split(/\s+and\s+/)[0];
+        return {
+            domain: match[1],
+            type: CommitType.MULTIPLE,
+            service: "services",
+            version: "multiple-envs",
+            environment: firstEnv,
+        };
+    }
+    return null;
+}
+// Multiple domains pattern
+function matchMultipleDomains(commitTitle) {
+    const pattern = /^Deploy\s+multiple\s+services\s+to\s+(prod|sta|dev)$/i;
+    const match = commitTitle.match(pattern);
+    if (match) {
+        return {
+            domain: "multiple",
+            type: CommitType.MULTIPLE,
+            service: "services",
+            version: "multiple",
+            environment: match[1].toLowerCase(),
+        };
+    }
+    return null;
+}
+// Multiple domains config changes pattern
+function matchMultipleDomainsConfig(commitTitle) {
+    const pattern = /^Deploy\s+config\s+changes\s+to\s+(prod|sta|dev)$/i;
+    const match = commitTitle.match(pattern);
+    if (match) {
+        return {
+            domain: "multiple",
+            type: CommitType.CONFIG,
+            service: "config",
+            version: "config",
+            environment: match[1].toLowerCase(),
+        };
+    }
+    return null;
+}
+// Legacy v1 format pattern
+function matchLegacyV1Format(commitTitle) {
+    const pattern = /^Deployed\s+(\S+)\s+(\S+)\s+version\s+(v?\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)$/i;
+    const match = commitTitle.match(pattern);
+    if (match) {
+        return {
+            domain: match[1],
+            type: CommitType.VERSION,
+            service: match[2],
+            version: match[3],
+            environment: match[4].toLowerCase(),
+        };
+    }
+    return null;
+}
+// Legacy v2 format pattern
+function matchLegacyV2Format(commitTitle) {
+    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+version\s+(v\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)$/i;
+    const match = commitTitle.match(pattern);
+    if (match) {
+        return {
+            domain: match[1],
+            type: CommitType.VERSION,
+            service: match[2],
+            version: match[3],
+            environment: match[4].toLowerCase(),
+        };
+    }
+    return null;
+}
+// Main orchestrator function
+function isDeploymentCommit(commit) {
+    const commitTitle = getCommitMessageTitle(commit);
+    // Array of matcher functions in priority order
+    const matchers = [
+        matchSingleServiceWithVersion,
+        matchSingleServiceConfig,
+        matchMultipleServices,
+        matchMultipleServicesConfig,
+        matchMultipleEnvironments,
+        matchMultipleDomains,
+        matchMultipleDomainsConfig,
+        matchLegacyV1Format,
+        matchLegacyV2Format,
+    ];
+    // Try each matcher until one succeeds
+    for (const matcher of matchers) {
+        const result = matcher(commitTitle);
+        if (result) {
+            console.log(`Matched pattern: ${matcher.name}`);
+            console.log("commitMessageDetails:", result);
+            return { ok: true, commitMessage: result };
+        }
+    }
+    // No match found
+    return {
+        ok: false,
+        commitMessage: {
+            domain: "",
+            type: CommitType.CONFIG,
+            service: "",
+            version: "",
+            environment: "",
+        },
+    };
+}
+
+
+/***/ }),
+
 /***/ 8415:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -50,11 +245,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.buildCommit = buildCommit;
-exports.isDeploymentCommit = isDeploymentCommit;
 const core = __importStar(__nccwpck_require__(7484));
 const web_api_1 = __nccwpck_require__(5105);
+const commit_parser_1 = __nccwpck_require__(6995);
 // Load environment variables when running locally
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== "test") {
     try {
         (__nccwpck_require__(8889).config)();
     }
@@ -71,17 +266,14 @@ function getInputWithFallback(name) {
     }
     // Fallback to environment variable for local testing
     const envMap = {
-        'slack-access-token': 'SLACK_ACCESS_TOKEN',
-        'commit-url': 'COMMIT_URL',
-        'commit-author-username': 'COMMIT_AUTHOR_USERNAME',
-        'commit-author-email': 'COMMIT_AUTHOR_EMAIL',
-        'commit-message': 'COMMIT_MESSAGE'
+        "slack-access-token": "SLACK_ACCESS_TOKEN",
+        "commit-url": "COMMIT_URL",
+        "commit-author-username": "COMMIT_AUTHOR_USERNAME",
+        "commit-author-email": "COMMIT_AUTHOR_EMAIL",
+        "commit-message": "COMMIT_MESSAGE",
     };
     const envVar = envMap[name];
-    return envVar ? (process.env[envVar] || '') : '';
-}
-function getCommitMessageTitle(commit) {
-    return commit.commitMessage.split("\n")[0];
+    return envVar ? process.env[envVar] || "" : "";
 }
 function main() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -89,17 +281,14 @@ function main() {
             console.log("Running actions-notify-slack-k8s");
             const slackClient = getSlackClient();
             const commit = buildCommit();
-            const { ok, commitMessage } = isDeploymentCommit(commit);
+            const { ok, commitMessage } = (0, commit_parser_1.isDeploymentCommit)(commit);
             if (!ok) {
                 console.log("Commit is not a deployment commit:", commit.commitMessage);
                 return;
             }
             // Example: "#deploys-mas-billing-prod"
             const slackChannel = `#deploys-${commitMessage.domain}-${commitMessage.environment}`;
-            let message = `:rocket: Deployed ${commitMessage.domain} \`${commitMessage.service}\` version \`${commitMessage.version}\` to <${commit.url}|${commitMessage.environment}>`;
-            if (commit.authorUsername !== "") {
-                message += ` by _${commit.authorUsername}_`;
-            }
+            const message = buildSlackMessage(commit, commitMessage);
             const ts = yield sendMessageToChannel(slackClient, slackChannel, message);
             console.log("ts:", ts);
             // Add rest of the commit message if it exists
@@ -129,49 +318,35 @@ function buildCommit() {
         commitMessage: getInputWithFallback("commit-message"),
     };
 }
-function isDeploymentCommit(commit) {
-    // Try v1 format first
-    // Examples: "Deployed mas-billing api-billing version v1.37.0 to prod"
-    //           "Deployed mas-billing api-billing version v1.37.0-RC.2 to sta"
-    //           "Deployed mas-billing api-billing version v1.37.0 to STA"
-    const v1Pattern = /Deployed\s(\w\S+)\s(\w\S+)\sversion\s(v\d+\.\d+\.\d+\S*)\sto\s(prod|sta|dev)/i;
-    const v1Matches = getCommitMessageTitle(commit).match(v1Pattern);
-    if (v1Matches && v1Matches.length > 0) {
-        const commitMessage = {
-            domain: v1Matches[1],
-            service: v1Matches[2],
-            version: v1Matches[3],
-            environment: v1Matches[4],
-        };
-        console.log("matched v1 string:", v1Matches[0]);
-        console.log("commitMessageDetails:", commitMessage);
-        return { ok: true, commitMessage };
+function buildSlackMessage(commit, commitMessage) {
+    const baseUrl = `<${commit.url}|${commitMessage.environment}>`;
+    const author = commit.authorUsername !== "" ? ` by _${commit.authorUsername}_` : "";
+    switch (commitMessage.type) {
+        case commit_parser_1.CommitType.VERSION:
+            if (commitMessage.domain === "multiple") {
+                return `:rocket: Deployed multiple services version \`${commitMessage.version}\` to ${baseUrl}${author}`;
+            }
+            return `:rocket: Deployed ${commitMessage.domain} \`${commitMessage.service}\` version \`${commitMessage.version}\` to ${baseUrl}${author}`;
+        case commit_parser_1.CommitType.CONFIG:
+            if (commitMessage.domain === "multiple" && commitMessage.service === "config") {
+                return `:gear: Deployed config changes to ${baseUrl}${author}`;
+            }
+            if (commitMessage.service === "services") {
+                return `:gear: Deployed ${commitMessage.domain} services config changes to ${baseUrl}${author}`;
+            }
+            return `:gear: Deployed ${commitMessage.domain} \`${commitMessage.service}\` config changes to ${baseUrl}${author}`;
+        case commit_parser_1.CommitType.MULTIPLE:
+            if (commitMessage.domain === "multiple") {
+                return `:rocket: Deployed multiple services to ${baseUrl}${author}`;
+            }
+            if (commitMessage.version === "multiple-envs") {
+                return `:rocket: Deployed ${commitMessage.domain} services to multiple environments${author}`;
+            }
+            return `:rocket: Deployed ${commitMessage.domain} services to ${baseUrl}${author}`;
+        default:
+            // Fallback to original format
+            return `:rocket: Deployed ${commitMessage.domain} \`${commitMessage.service}\` version \`${commitMessage.version}\` to ${baseUrl}${author}`;
     }
-    // Try v2 format
-    // Example: "Deploy mas-billing rating-engine version v1.132.5 to prod"
-    const v2Pattern = /Deploy\s(\w\S+)\s(\w\S+)\sversion\s(v\d+\.\d+\.\d+\S*)\sto\s(prod|sta|dev)/i;
-    const v2Matches = getCommitMessageTitle(commit).match(v2Pattern);
-    if (v2Matches && v2Matches.length > 0) {
-        const commitMessage = {
-            domain: v2Matches[1],
-            service: v2Matches[2],
-            version: v2Matches[3],
-            environment: v2Matches[4],
-        };
-        console.log("matched v2 string:", v2Matches[0]);
-        console.log("commitMessageDetails:", commitMessage);
-        return { ok: true, commitMessage };
-    }
-    // No match found
-    return {
-        ok: false,
-        commitMessage: {
-            domain: "",
-            service: "",
-            version: "",
-            environment: "",
-        },
-    };
 }
 function sendMessageToChannel(client, slackChannel, message) {
     return __awaiter(this, void 0, void 0, function* () {
