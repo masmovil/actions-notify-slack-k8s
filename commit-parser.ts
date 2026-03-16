@@ -25,7 +25,7 @@ export function getCommitMessageTitle(commit: Commit): string {
 
 // Single service with version pattern
 function matchSingleServiceWithVersion(commitTitle: string): CommitMessageDetails | null {
-    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+version\s+(v?\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+version\s+(v?\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
 
     if (match) {
@@ -42,7 +42,7 @@ function matchSingleServiceWithVersion(commitTitle: string): CommitMessageDetail
 
 // Single service config changes pattern
 function matchSingleServiceConfig(commitTitle: string): CommitMessageDetails | null {
-    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+config\s+changes\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+config\s+changes\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
 
     if (match) {
@@ -59,7 +59,7 @@ function matchSingleServiceConfig(commitTitle: string): CommitMessageDetails | n
 
 // Multiple services in same domain pattern
 function matchMultipleServices(commitTitle: string): CommitMessageDetails | null {
-    const pattern = /^Deploy\s+(\S+)\s+services\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+(\S+)\s+services\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
 
     if (match) {
@@ -76,7 +76,7 @@ function matchMultipleServices(commitTitle: string): CommitMessageDetails | null
 
 // Multiple services config changes pattern
 function matchMultipleServicesConfig(commitTitle: string): CommitMessageDetails | null {
-    const pattern = /^Deploy\s+(\S+)\s+services\s+config\s+changes\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+(\S+)\s+services\s+config\s+changes\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
 
     if (match) {
@@ -93,7 +93,7 @@ function matchMultipleServicesConfig(commitTitle: string): CommitMessageDetails 
 
 // Multiple environments pattern
 function matchMultipleEnvironments(commitTitle: string): CommitMessageDetails | null {
-    const pattern = /^Deploy\s+(\S+)\s+services\s+to\s+((?:sta|prod|dev)(?:\s+and\s+(?:sta|prod|dev))+)$/i;
+    const pattern = /^Deploy\s+(\S+)\s+services\s+to\s+((?:sta|prod|dev)(?:\s+and\s+(?:sta|prod|dev))+)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
 
     if (match) {
@@ -112,7 +112,7 @@ function matchMultipleEnvironments(commitTitle: string): CommitMessageDetails | 
 
 // Multiple domains pattern
 function matchMultipleDomains(commitTitle: string): CommitMessageDetails | null {
-    const pattern = /^Deploy\s+multiple\s+services\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+multiple\s+services\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
 
     if (match) {
@@ -129,7 +129,7 @@ function matchMultipleDomains(commitTitle: string): CommitMessageDetails | null 
 
 // Multiple domains config changes pattern
 function matchMultipleDomainsConfig(commitTitle: string): CommitMessageDetails | null {
-    const pattern = /^Deploy\s+config\s+changes\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+config\s+changes\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
 
     if (match) {
@@ -146,7 +146,7 @@ function matchMultipleDomainsConfig(commitTitle: string): CommitMessageDetails |
 
 // Legacy v1 format pattern
 function matchLegacyV1Format(commitTitle: string): CommitMessageDetails | null {
-    const pattern = /^Deployed\s+(\S+)\s+(\S+)\s+version\s+(v?\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deployed\s+(\S+)\s+(\S+)\s+version\s+(v?\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
 
     if (match) {
@@ -163,7 +163,7 @@ function matchLegacyV1Format(commitTitle: string): CommitMessageDetails | null {
 
 // Legacy v2 format pattern
 function matchLegacyV2Format(commitTitle: string): CommitMessageDetails | null {
-    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+version\s+(v\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+version\s+(v\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
 
     if (match) {
