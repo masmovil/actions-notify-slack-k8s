@@ -360,4 +360,234 @@ describe("actions-notify-slack-k8s", () => {
       expect(result.commitMessage.environment).toBe(testCase.expectedEnv);
     });
   });
+
+  describe("PR number handling", () => {
+    it("should detect single service deployment with PR number", () => {
+      const commit: Commit = {
+        url: "https://github.com/test/repo/commit/abc123",
+        authorUsername: "testuser",
+        authorEmail: "test@example.com",
+        commitMessage: "Deploy mas-billing api-billing version v1.37.0 to prod (#12345)",
+      };
+
+      const result = isDeploymentCommit(commit);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("mas-billing");
+      expect(result.commitMessage.service).toBe("api-billing");
+      expect(result.commitMessage.version).toBe("v1.37.0");
+      expect(result.commitMessage.environment).toBe("prod");
+    });
+
+    it("should detect single service config changes with PR number", () => {
+      const commit: Commit = {
+        url: "https://github.com/test/repo/commit/abc123",
+        authorUsername: "testuser",
+        authorEmail: "test@example.com",
+        commitMessage: "Deploy mas-billing api-billing config changes to prod (#54321)",
+      };
+
+      const result = isDeploymentCommit(commit);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("mas-billing");
+      expect(result.commitMessage.service).toBe("api-billing");
+      expect(result.commitMessage.version).toBe("config");
+      expect(result.commitMessage.environment).toBe("prod");
+    });
+
+    it("should detect multiple services deployment with PR number", () => {
+      const commit: Commit = {
+        url: "https://github.com/test/repo/commit/abc123",
+        authorUsername: "testuser",
+        authorEmail: "test@example.com",
+        commitMessage: "Deploy mas-billing services to sta (#33955)",
+      };
+
+      const result = isDeploymentCommit(commit);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("mas-billing");
+      expect(result.commitMessage.service).toBe("services");
+      expect(result.commitMessage.version).toBe("multiple");
+      expect(result.commitMessage.environment).toBe("sta");
+    });
+
+    it("should detect multiple services config changes with PR number", () => {
+      const commit: Commit = {
+        url: "https://github.com/test/repo/commit/abc123",
+        authorUsername: "testuser",
+        authorEmail: "test@example.com",
+        commitMessage: "Deploy mas-billing services config changes to dev (#99999)",
+      };
+
+      const result = isDeploymentCommit(commit);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("mas-billing");
+      expect(result.commitMessage.service).toBe("services");
+      expect(result.commitMessage.version).toBe("config");
+      expect(result.commitMessage.environment).toBe("dev");
+    });
+
+    it("should detect multiple environments deployment with PR number", () => {
+      const commit: Commit = {
+        url: "https://github.com/test/repo/commit/abc123",
+        authorUsername: "testuser",
+        authorEmail: "test@example.com",
+        commitMessage: "Deploy mas-billing services to sta and prod (#11111)",
+      };
+
+      const result = isDeploymentCommit(commit);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("mas-billing");
+      expect(result.commitMessage.service).toBe("services");
+      expect(result.commitMessage.version).toBe("multiple-envs");
+      expect(result.commitMessage.environment).toBe("sta");
+    });
+
+    it("should detect multiple domains deployment with PR number", () => {
+      const commit: Commit = {
+        url: "https://github.com/test/repo/commit/abc123",
+        authorUsername: "testuser",
+        authorEmail: "test@example.com",
+        commitMessage: "Deploy multiple services to prod (#22222)",
+      };
+
+      const result = isDeploymentCommit(commit);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("multiple");
+      expect(result.commitMessage.service).toBe("services");
+      expect(result.commitMessage.version).toBe("multiple");
+      expect(result.commitMessage.environment).toBe("prod");
+    });
+
+    it("should detect multiple domains config changes with PR number", () => {
+      const commit: Commit = {
+        url: "https://github.com/test/repo/commit/abc123",
+        authorUsername: "testuser",
+        authorEmail: "test@example.com",
+        commitMessage: "Deploy config changes to dev (#77777)",
+      };
+
+      const result = isDeploymentCommit(commit);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("multiple");
+      expect(result.commitMessage.service).toBe("config");
+      expect(result.commitMessage.version).toBe("config");
+      expect(result.commitMessage.environment).toBe("dev");
+    });
+
+    it("should detect legacy v1 format with PR number", () => {
+      const commit: Commit = {
+        url: "https://github.com/test/repo/commit/abc123",
+        authorUsername: "testuser",
+        authorEmail: "test@example.com",
+        commitMessage: "Deployed mas-billing api-billing version v1.37.0 to prod (#88888)",
+      };
+
+      const result = isDeploymentCommit(commit);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("mas-billing");
+      expect(result.commitMessage.service).toBe("api-billing");
+      expect(result.commitMessage.version).toBe("v1.37.0");
+      expect(result.commitMessage.environment).toBe("prod");
+    });
+
+    it("should detect legacy v2 format with PR number", () => {
+      const commit: Commit = {
+        url: "https://github.com/test/repo/commit/abc123",
+        authorUsername: "testuser",
+        authorEmail: "test@example.com",
+        commitMessage: "Deploy mas-billing rating-engine version v1.132.5 to prod (#71079)",
+      };
+
+      const result = isDeploymentCommit(commit);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("mas-billing");
+      expect(result.commitMessage.service).toBe("rating-engine");
+      expect(result.commitMessage.version).toBe("v1.132.5");
+      expect(result.commitMessage.environment).toBe("prod");
+    });
+
+    // Backward compatibility tests - ensure existing messages without PR numbers still work
+    it("should still match messages without PR numbers (backward compatibility)", () => {
+      const testCases = [
+        "Deploy mas-billing services to prod",
+        "Deploy mas-billing api-billing version v1.37.0 to sta",
+        "Deploy mas-billing api-billing config changes to dev",
+        "Deploy multiple services to prod",
+        "Deploy config changes to sta",
+        "Deploy mas-billing services to sta and prod",
+        "Deployed mas-billing api-billing version v1.37.0 to prod",
+      ];
+
+      testCases.forEach((message) => {
+        const commit: Commit = {
+          url: "https://github.com/test/repo/commit/abc123",
+          authorUsername: "testuser",
+          authorEmail: "test@example.com",
+          commitMessage: message,
+        };
+
+        const result = isDeploymentCommit(commit);
+
+        expect(result.ok).toBe(true);
+      });
+    });
+
+    // Edge cases
+    it("should NOT match PR numbers without parentheses", () => {
+      const commit: Commit = {
+        url: "https://github.com/test/repo/commit/abc123",
+        authorUsername: "testuser",
+        authorEmail: "test@example.com",
+        commitMessage: "Deploy mas-billing services to sta #33955",
+      };
+
+      const result = isDeploymentCommit(commit);
+
+      expect(result.ok).toBe(false);
+    });
+
+    it("should NOT match with extra text after PR number", () => {
+      const commit: Commit = {
+        url: "https://github.com/test/repo/commit/abc123",
+        authorUsername: "testuser",
+        authorEmail: "test@example.com",
+        commitMessage: "Deploy mas-billing services to sta (#33955) with extra text",
+      };
+
+      const result = isDeploymentCommit(commit);
+
+      expect(result.ok).toBe(false);
+    });
+
+    it("should handle PR numbers with varying digit lengths", () => {
+      const testCases = [
+        { message: "Deploy mas-billing services to prod (#1)", prNumber: "1" },
+        { message: "Deploy mas-billing services to prod (#123)", prNumber: "123" },
+        { message: "Deploy mas-billing services to prod (#123456)", prNumber: "123456" },
+      ];
+
+      testCases.forEach((testCase) => {
+        const commit: Commit = {
+          url: "https://github.com/test/repo/commit/abc123",
+          authorUsername: "testuser",
+          authorEmail: "test@example.com",
+          commitMessage: testCase.message,
+        };
+
+        const result = isDeploymentCommit(commit);
+
+        expect(result.ok).toBe(true);
+        expect(result.commitMessage.domain).toBe("mas-billing");
+      });
+    });
+  });
 });

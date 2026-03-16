@@ -21,7 +21,7 @@ function getCommitMessageTitle(commit) {
 }
 // Single service with version pattern
 function matchSingleServiceWithVersion(commitTitle) {
-    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+version\s+(v?\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+version\s+(v?\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
     if (match) {
         return {
@@ -36,7 +36,7 @@ function matchSingleServiceWithVersion(commitTitle) {
 }
 // Single service config changes pattern
 function matchSingleServiceConfig(commitTitle) {
-    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+config\s+changes\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+config\s+changes\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
     if (match) {
         return {
@@ -51,7 +51,7 @@ function matchSingleServiceConfig(commitTitle) {
 }
 // Multiple services in same domain pattern
 function matchMultipleServices(commitTitle) {
-    const pattern = /^Deploy\s+(\S+)\s+services\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+(\S+)\s+services\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
     if (match) {
         return {
@@ -66,7 +66,7 @@ function matchMultipleServices(commitTitle) {
 }
 // Multiple services config changes pattern
 function matchMultipleServicesConfig(commitTitle) {
-    const pattern = /^Deploy\s+(\S+)\s+services\s+config\s+changes\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+(\S+)\s+services\s+config\s+changes\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
     if (match) {
         return {
@@ -81,7 +81,7 @@ function matchMultipleServicesConfig(commitTitle) {
 }
 // Multiple environments pattern
 function matchMultipleEnvironments(commitTitle) {
-    const pattern = /^Deploy\s+(\S+)\s+services\s+to\s+((?:sta|prod|dev)(?:\s+and\s+(?:sta|prod|dev))+)$/i;
+    const pattern = /^Deploy\s+(\S+)\s+services\s+to\s+((?:sta|prod|dev)(?:\s+and\s+(?:sta|prod|dev))+)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
     if (match) {
         const envs = match[2].toLowerCase();
@@ -98,7 +98,7 @@ function matchMultipleEnvironments(commitTitle) {
 }
 // Multiple domains pattern
 function matchMultipleDomains(commitTitle) {
-    const pattern = /^Deploy\s+multiple\s+services\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+multiple\s+services\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
     if (match) {
         return {
@@ -113,7 +113,7 @@ function matchMultipleDomains(commitTitle) {
 }
 // Multiple domains config changes pattern
 function matchMultipleDomainsConfig(commitTitle) {
-    const pattern = /^Deploy\s+config\s+changes\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+config\s+changes\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
     if (match) {
         return {
@@ -128,7 +128,7 @@ function matchMultipleDomainsConfig(commitTitle) {
 }
 // Legacy v1 format pattern
 function matchLegacyV1Format(commitTitle) {
-    const pattern = /^Deployed\s+(\S+)\s+(\S+)\s+version\s+(v?\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deployed\s+(\S+)\s+(\S+)\s+version\s+(v?\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
     if (match) {
         return {
@@ -143,7 +143,7 @@ function matchLegacyV1Format(commitTitle) {
 }
 // Legacy v2 format pattern
 function matchLegacyV2Format(commitTitle) {
-    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+version\s+(v\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)$/i;
+    const pattern = /^Deploy\s+(\S+)\s+(\S+)\s+version\s+(v\d+\.\d+\.\d+\S*)\s+to\s+(prod|sta|dev)(?:\s+\(#\d+\))?$/i;
     const match = commitTitle.match(pattern);
     if (match) {
         return {
