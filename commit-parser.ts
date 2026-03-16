@@ -1,9 +1,24 @@
-export interface Commit {
+export interface CommitDeployment {
+    eventType: "deployment_completed";
     url: string;
     authorUsername: string;
     authorEmail: string;
     commitMessage: string;
 }
+
+export interface PullRequestDeployment {
+    eventType: "deployment_requested";
+    prUrl: string;
+    prNumber: string;
+    prTitle: string;
+    prAuthorUsername: string;
+    prBody: string;
+}
+
+export type DeploymentEvent = CommitDeployment | PullRequestDeployment;
+
+// Legacy type alias for backward compatibility
+export type Commit = CommitDeployment;
 
 export interface CommitMessageDetails {
     domain: string;
@@ -19,6 +34,14 @@ export enum CommitType {
     MULTIPLE = "multiple",
 }
 
+export function getDeploymentMessageTitle(event: DeploymentEvent): string {
+    const message = event.eventType === "deployment_completed"
+        ? event.commitMessage
+        : event.prBody;
+    return message.split("\n")[0];
+}
+
+// Legacy function for backward compatibility
 export function getCommitMessageTitle(commit: Commit): string {
     return commit.commitMessage.split("\n")[0];
 }
@@ -178,12 +201,12 @@ function matchLegacyV2Format(commitTitle: string): CommitMessageDetails | null {
     return null;
 }
 
-// Main orchestrator function
-export function isDeploymentCommit(commit: Commit): {
+// New main orchestrator function for all deployment events
+export function isDeploymentEvent(event: DeploymentEvent): {
     ok: boolean;
     commitMessage: CommitMessageDetails;
 } {
-    const commitTitle = getCommitMessageTitle(commit);
+    const commitTitle = getDeploymentMessageTitle(event);
 
     // Array of matcher functions in priority order
     const matchers = [
@@ -219,4 +242,12 @@ export function isDeploymentCommit(commit: Commit): {
             environment: "",
         },
     };
+}
+
+// Legacy function for backward compatibility with existing tests
+export function isDeploymentCommit(commit: Commit): {
+    ok: boolean;
+    commitMessage: CommitMessageDetails;
+} {
+    return isDeploymentEvent(commit);
 }
