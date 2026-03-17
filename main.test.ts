@@ -7,7 +7,7 @@
 import * as core from "@actions/core";
 import * as dotenv from "dotenv";
 import { WebClient } from "@slack/web-api";
-import { isDeploymentCommit, Commit } from "./commit-parser";
+import { isDeploymentCommit, isDeploymentEvent, Commit, PullRequestDeployment } from "./commit-parser";
 
 // Load environment variables from .env file for local testing
 dotenv.config();
@@ -19,6 +19,29 @@ const mockCore = core as jest.Mocked<typeof core>;
 // Mock the @slack/web-api module
 jest.mock("@slack/web-api");
 const mockWebClient = WebClient as jest.MockedClass<typeof WebClient>;
+
+// Helper function to create commit test objects
+function createCommit(message: string): Commit {
+  return {
+    eventType: "deployment_completed",
+    url: "https://github.com/test/repo/commit/abc123",
+    authorUsername: "testuser",
+    authorEmail: "test@example.com",
+    commitMessage: message,
+  };
+}
+
+// Helper function to create PR test objects
+function createPullRequest(title: string, prNumber = "12345"): PullRequestDeployment {
+  return {
+    eventType: "deployment_requested",
+    prUrl: `https://github.com/test/repo/pull/${prNumber}`,
+    prNumber,
+    prTitle: title,
+    prAuthorUsername: "testuser",
+    prBody: "```json\n[\n  {\n    \"domain\": \"test\",\n    \"service\": \"test-service\",\n    \"environment\": \"prod\"\n  }\n]\n```",
+  };
+}
 
 describe("actions-notify-slack-k8s", () => {
   let mockPostMessage: jest.Mock;
@@ -61,12 +84,7 @@ describe("actions-notify-slack-k8s", () => {
 
   it("should detect deployment commit and extract details", () => {
     // Test the deployment commit parsing logic
-    const commit: Commit = {
-      url: "https://github.com/test/repo/commit/abc123",
-      authorUsername: "testuser",
-      authorEmail: "test@example.com",
-      commitMessage: "Deployed mas-billing api-billing version v1.37.0 to prod",
-    };
+    const commit = createCommit("Deployed mas-billing api-billing version v1.37.0 to prod");
 
     const result = isDeploymentCommit(commit);
 
@@ -78,12 +96,7 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should not detect non-deployment commit", () => {
-    const commit: Commit = {
-      url: "https://github.com/test/repo/commit/abc123",
-      authorUsername: "testuser",
-      authorEmail: "test@example.com",
-      commitMessage: "Fix typo in documentation",
-    };
+    const commit = createCommit("Fix typo in documentation");
 
     const result = isDeploymentCommit(commit);
 
@@ -122,12 +135,7 @@ describe("actions-notify-slack-k8s", () => {
     ];
 
     testCases.forEach((testCase) => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: testCase.message,
-      };
+      const commit = createCommit(testCase.message);
 
       const result = isDeploymentCommit(commit);
 
@@ -142,17 +150,12 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should detect v2 deployment commit format and extract details", () => {
-    const commit: Commit = {
-      url: "https://github.com/test/repo/commit/abc123",
-      authorUsername: "testuser",
-      authorEmail: "test@example.com",
-      commitMessage: `Deploy mas-billing rating-engine version v1.132.5 to prod
+    const commit = createCommit(`Deploy mas-billing rating-engine version v1.132.5 to prod
 
 - serviceName: rating-engine
   version: v1.132.5
   changelog: |
-    task(mas-billing|rating-engine): MBIL-5497 change prices for mayotte and reunion (#71079)`,
-    };
+    task(mas-billing|rating-engine): MBIL-5497 change prices for mayotte and reunion (#71079)`);
 
     const result = isDeploymentCommit(commit);
 
@@ -195,12 +198,7 @@ describe("actions-notify-slack-k8s", () => {
     ];
 
     testCases.forEach((testCase) => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: testCase.message,
-      };
+      const commit = createCommit(testCase.message);
 
       const result = isDeploymentCommit(commit);
 
@@ -215,12 +213,7 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should detect single service config changes", () => {
-    const commit: Commit = {
-      url: "https://github.com/test/repo/commit/abc123",
-      authorUsername: "testuser",
-      authorEmail: "test@example.com",
-      commitMessage: "Deploy mas-billing api-billing config changes to prod",
-    };
+    const commit = createCommit("Deploy mas-billing api-billing config changes to prod");
 
     const result = isDeploymentCommit(commit);
 
@@ -232,12 +225,7 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should detect multiple services in same domain", () => {
-    const commit: Commit = {
-      url: "https://github.com/test/repo/commit/abc123",
-      authorUsername: "testuser",
-      authorEmail: "test@example.com",
-      commitMessage: "Deploy mas-billing services to prod",
-    };
+    const commit = createCommit("Deploy mas-billing services to prod");
 
     const result = isDeploymentCommit(commit);
 
@@ -249,12 +237,7 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should detect multiple services config changes in same domain", () => {
-    const commit: Commit = {
-      url: "https://github.com/test/repo/commit/abc123",
-      authorUsername: "testuser",
-      authorEmail: "test@example.com",
-      commitMessage: "Deploy mas-billing services config changes to sta",
-    };
+    const commit = createCommit("Deploy mas-billing services config changes to sta");
 
     const result = isDeploymentCommit(commit);
 
@@ -266,12 +249,7 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should detect multiple environments deployment", () => {
-    const commit: Commit = {
-      url: "https://github.com/test/repo/commit/abc123",
-      authorUsername: "testuser",
-      authorEmail: "test@example.com",
-      commitMessage: "Deploy mas-billing services to sta and prod",
-    };
+    const commit = createCommit("Deploy mas-billing services to sta and prod");
 
     const result = isDeploymentCommit(commit);
 
@@ -283,12 +261,7 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should detect multiple domains deployment", () => {
-    const commit: Commit = {
-      url: "https://github.com/test/repo/commit/abc123",
-      authorUsername: "testuser",
-      authorEmail: "test@example.com",
-      commitMessage: "Deploy multiple services to prod",
-    };
+    const commit = createCommit("Deploy multiple services to prod");
 
     const result = isDeploymentCommit(commit);
 
@@ -300,12 +273,7 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should detect multiple domains config changes", () => {
-    const commit: Commit = {
-      url: "https://github.com/test/repo/commit/abc123",
-      authorUsername: "testuser",
-      authorEmail: "test@example.com",
-      commitMessage: "Deploy config changes to dev",
-    };
+    const commit = createCommit("Deploy config changes to dev");
 
     const result = isDeploymentCommit(commit);
 
@@ -317,12 +285,7 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should detect grouped chart deployments", () => {
-    const commit: Commit = {
-      url: "https://github.com/test/repo/commit/abc123",
-      authorUsername: "testuser",
-      authorEmail: "test@example.com",
-      commitMessage: "Deploy mas-billing billing-chart version v2.1.0 to prod",
-    };
+    const commit = createCommit("Deploy mas-billing billing-chart version v2.1.0 to prod");
 
     const result = isDeploymentCommit(commit);
 
@@ -346,12 +309,7 @@ describe("actions-notify-slack-k8s", () => {
     ];
 
     testCases.forEach((testCase) => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: testCase.message,
-      };
+      const commit = createCommit(testCase.message);
 
       const result = isDeploymentCommit(commit);
 
@@ -363,12 +321,7 @@ describe("actions-notify-slack-k8s", () => {
 
   describe("PR number handling", () => {
     it("should detect single service deployment with PR number", () => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: "Deploy mas-billing api-billing version v1.37.0 to prod (#12345)",
-      };
+      const commit = createCommit("Deploy mas-billing api-billing version v1.37.0 to prod (#12345)");
 
       const result = isDeploymentCommit(commit);
 
@@ -380,12 +333,7 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect single service config changes with PR number", () => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: "Deploy mas-billing api-billing config changes to prod (#54321)",
-      };
+      const commit = createCommit("Deploy mas-billing api-billing config changes to prod (#54321)");
 
       const result = isDeploymentCommit(commit);
 
@@ -397,12 +345,7 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect multiple services deployment with PR number", () => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: "Deploy mas-billing services to sta (#33955)",
-      };
+      const commit = createCommit("Deploy mas-billing services to sta (#33955)");
 
       const result = isDeploymentCommit(commit);
 
@@ -414,12 +357,7 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect multiple services config changes with PR number", () => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: "Deploy mas-billing services config changes to dev (#99999)",
-      };
+      const commit = createCommit("Deploy mas-billing services config changes to dev (#99999)");
 
       const result = isDeploymentCommit(commit);
 
@@ -431,12 +369,7 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect multiple environments deployment with PR number", () => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: "Deploy mas-billing services to sta and prod (#11111)",
-      };
+      const commit = createCommit("Deploy mas-billing services to sta and prod (#11111)");
 
       const result = isDeploymentCommit(commit);
 
@@ -448,12 +381,7 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect multiple domains deployment with PR number", () => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: "Deploy multiple services to prod (#22222)",
-      };
+      const commit = createCommit("Deploy multiple services to prod (#22222)");
 
       const result = isDeploymentCommit(commit);
 
@@ -465,12 +393,7 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect multiple domains config changes with PR number", () => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: "Deploy config changes to dev (#77777)",
-      };
+      const commit = createCommit("Deploy config changes to dev (#77777)");
 
       const result = isDeploymentCommit(commit);
 
@@ -482,12 +405,7 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect legacy v1 format with PR number", () => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: "Deployed mas-billing api-billing version v1.37.0 to prod (#88888)",
-      };
+      const commit = createCommit("Deployed mas-billing api-billing version v1.37.0 to prod (#88888)");
 
       const result = isDeploymentCommit(commit);
 
@@ -499,12 +417,7 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect legacy v2 format with PR number", () => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: "Deploy mas-billing rating-engine version v1.132.5 to prod (#71079)",
-      };
+      const commit = createCommit("Deploy mas-billing rating-engine version v1.132.5 to prod (#71079)");
 
       const result = isDeploymentCommit(commit);
 
@@ -528,12 +441,7 @@ describe("actions-notify-slack-k8s", () => {
       ];
 
       testCases.forEach((message) => {
-        const commit: Commit = {
-          url: "https://github.com/test/repo/commit/abc123",
-          authorUsername: "testuser",
-          authorEmail: "test@example.com",
-          commitMessage: message,
-        };
+        const commit = createCommit(message);
 
         const result = isDeploymentCommit(commit);
 
@@ -543,12 +451,7 @@ describe("actions-notify-slack-k8s", () => {
 
     // Edge cases
     it("should NOT match PR numbers without parentheses", () => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: "Deploy mas-billing services to sta #33955",
-      };
+      const commit = createCommit("Deploy mas-billing services to sta #33955");
 
       const result = isDeploymentCommit(commit);
 
@@ -556,12 +459,7 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should NOT match with extra text after PR number", () => {
-      const commit: Commit = {
-        url: "https://github.com/test/repo/commit/abc123",
-        authorUsername: "testuser",
-        authorEmail: "test@example.com",
-        commitMessage: "Deploy mas-billing services to sta (#33955) with extra text",
-      };
+      const commit = createCommit("Deploy mas-billing services to sta (#33955) with extra text");
 
       const result = isDeploymentCommit(commit);
 
@@ -576,18 +474,71 @@ describe("actions-notify-slack-k8s", () => {
       ];
 
       testCases.forEach((testCase) => {
-        const commit: Commit = {
-          url: "https://github.com/test/repo/commit/abc123",
-          authorUsername: "testuser",
-          authorEmail: "test@example.com",
-          commitMessage: testCase.message,
-        };
+        const commit = createCommit(testCase.message);
 
         const result = isDeploymentCommit(commit);
 
         expect(result.ok).toBe(true);
         expect(result.commitMessage.domain).toBe("mas-billing");
       });
+    });
+  });
+
+  describe("PR deployment request events", () => {
+    it("should detect PR deployment request and extract details", () => {
+      const pr = createPullRequest("Deploy mas-billing api-billing version v1.37.0 to prod");
+
+      const result = isDeploymentEvent(pr);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("mas-billing");
+      expect(result.commitMessage.service).toBe("api-billing");
+      expect(result.commitMessage.version).toBe("v1.37.0");
+      expect(result.commitMessage.environment).toBe("prod");
+    });
+
+    it("should detect PR with config changes", () => {
+      const pr = createPullRequest("Deploy mas-billing api-billing config changes to sta");
+
+      const result = isDeploymentEvent(pr);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("mas-billing");
+      expect(result.commitMessage.service).toBe("api-billing");
+      expect(result.commitMessage.version).toBe("config");
+      expect(result.commitMessage.environment).toBe("sta");
+    });
+
+    it("should detect PR with multiple services deployment", () => {
+      const pr = createPullRequest("Deploy mas-billing services to prod");
+
+      const result = isDeploymentEvent(pr);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("mas-billing");
+      expect(result.commitMessage.service).toBe("services");
+      expect(result.commitMessage.version).toBe("multiple");
+      expect(result.commitMessage.environment).toBe("prod");
+    });
+
+    it("should detect PR with PR number in body", () => {
+      const pr = createPullRequest("Deploy mas-billing services to prod (#54321)", "54321");
+
+      const result = isDeploymentEvent(pr);
+
+      expect(result.ok).toBe(true);
+      expect(result.commitMessage.domain).toBe("mas-billing");
+      expect(result.commitMessage.service).toBe("services");
+      expect(result.commitMessage.version).toBe("multiple");
+      expect(result.commitMessage.environment).toBe("prod");
+    });
+
+    it("should not detect non-deployment PR", () => {
+      const pr = createPullRequest("Fix typo in documentation");
+
+      const result = isDeploymentEvent(pr);
+
+      expect(result.ok).toBe(false);
     });
   });
 });

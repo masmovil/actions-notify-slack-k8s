@@ -5,17 +5,32 @@ inputs:
     description: 'Access token for Slack, used to match commit emails to usernames'
     required: true
   commit-url:
-    description: 'Github commit URL'
-    required: true
+    description: 'Github commit URL (for deployment completed events)'
+    required: false
   commit-author-username:
-    description: 'Github commit author username'
-    required: true
+    description: 'Github commit author username (for deployment completed events)'
+    required: false
   commit-author-email:
-    description: 'Github commit author email'
-    required: true
+    description: 'Github commit author email (for deployment completed events)'
+    required: false
   commit-message:
-    description: 'Github commit message'
-    required: true
+    description: 'Github commit message (for deployment completed events)'
+    required: false
+  pr-url:
+    description: 'Github PR URL (for deployment request events)'
+    required: false
+  pr-number:
+    description: 'Github PR number (for deployment request events)'
+    required: false
+  pr-author-username:
+    description: 'Github PR author username (for deployment request events)'
+    required: false
+  pr-title:
+    description: 'Github PR title (for deployment request events)'
+    required: false
+  pr-body:
+    description: 'Github PR body containing deployment details (for deployment request events)'
+    required: false
 runs:
   using: 'node20'
   main: 'dist/index.js'

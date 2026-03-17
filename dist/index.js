@@ -8,7 +8,9 @@ require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.CommitType = void 0;
+exports.getDeploymentMessageTitle = getDeploymentMessageTitle;
 exports.getCommitMessageTitle = getCommitMessageTitle;
+exports.isDeploymentEvent = isDeploymentEvent;
 exports.isDeploymentCommit = isDeploymentCommit;
 var CommitType;
 (function (CommitType) {
@@ -16,6 +18,13 @@ var CommitType;
     CommitType["CONFIG"] = "config";
     CommitType["MULTIPLE"] = "multiple";
 })(CommitType || (exports.CommitType = CommitType = {}));
+function getDeploymentMessageTitle(event) {
+    const message = event.eventType === "deployment_completed"
+        ? event.commitMessage
+        : event.prTitle;
+    return message.split("\n")[0];
+}
+// Legacy function for backward compatibility
 function getCommitMessageTitle(commit) {
     return commit.commitMessage.split("\n")[0];
 }
@@ -156,9 +165,9 @@ function matchLegacyV2Format(commitTitle) {
     }
     return null;
 }
-// Main orchestrator function
-function isDeploymentCommit(commit) {
-    const commitTitle = getCommitMessageTitle(commit);
+// New main orchestrator function for all deployment events
+function isDeploymentEvent(event) {
+    const commitTitle = getDeploymentMessageTitle(event);
     // Array of matcher functions in priority order
     const matchers = [
         matchSingleServiceWithVersion,
@@ -191,6 +200,10 @@ function isDeploymentCommit(commit) {
             environment: "",
         },
     };
+}
+// Legacy function for backward compatibility with existing tests
+function isDeploymentCommit(commit) {
+    return isDeploymentEvent(commit);
 }
 
 
@@ -244,7 +257,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.buildCommit = buildCommit;
+exports.buildDeploymentEvent = buildDeploymentEvent;
 const core = __importStar(__nccwpck_require__(7484));
 const web_api_1 = __nccwpck_require__(5105);
 const commit_parser_1 = __nccwpck_require__(6995);
@@ -271,6 +284,11 @@ function getInputWithFallback(name) {
         "commit-author-username": "COMMIT_AUTHOR_USERNAME",
         "commit-author-email": "COMMIT_AUTHOR_EMAIL",
         "commit-message": "COMMIT_MESSAGE",
+        "pr-url": "PR_URL",
+        "pr-number": "PR_NUMBER",
+        "pr-author-username": "PR_AUTHOR_USERNAME",
+        "pr-title": "PR_TITLE",
+        "pr-body": "PR_BODY",
     };
     const envVar = envMap[name];
     return envVar ? process.env[envVar] || "" : "";
@@ -280,24 +298,30 @@ function main() {
         try {
             console.log("Running actions-notify-slack-k8s");
             const slackClient = getSlackClient();
-            const commit = buildCommit();
-            const { ok, commitMessage } = (0, commit_parser_1.isDeploymentCommit)(commit);
+            const deploymentEvent = buildDeploymentEvent();
+            const { ok, commitMessage } = (0, commit_parser_1.isDeploymentEvent)(deploymentEvent);
             if (!ok) {
-                console.log("Commit is not a deployment commit:", commit.commitMessage);
+                const message = deploymentEvent.eventType === "deployment_completed"
+                    ? deploymentEvent.commitMessage
+                    : deploymentEvent.prBody;
+                console.log("Event is not a deployment:", message);
                 return;
             }
             // Example: "#deploys-mas-billing-prod"
             const slackChannel = `#deploys-${commitMessage.domain}-${commitMessage.environment}`;
-            const message = buildSlackMessage(commit, commitMessage);
+            const message = buildSlackMessage(deploymentEvent, commitMessage);
             const ts = yield sendMessageToChannel(slackClient, slackChannel, message);
             console.log("ts:", ts);
-            // Add rest of the commit message if it exists
-            const commitLines = commit.commitMessage.split("\n");
-            if (commitLines.length > 1) {
-                // Remove the commit message header
-                const commitBody = commitLines.slice(1).join("\n").trim();
-                // Send the rest of the commit message as a response to the original message using the thread ts
-                const replyMessage = `\`\`\`${commitBody}\`\`\``;
+            // Add rest of the message if it exists (detailed info from commit/PR body)
+            const detailedMessage = deploymentEvent.eventType === "deployment_completed"
+                ? deploymentEvent.commitMessage
+                : deploymentEvent.prBody;
+            const messageLines = detailedMessage.split("\n");
+            if (messageLines.length > 1) {
+                // Remove the message header
+                const messageBody = messageLines.slice(1).join("\n").trim();
+                // Send the rest of the message as a response to the original message using the thread ts
+                const replyMessage = `\`\`\`${messageBody}\`\`\``;
                 yield sendMessageAsReply(slackClient, slackChannel, ts, replyMessage);
             }
         }
@@ -310,42 +334,64 @@ function getSlackClient() {
     const accessToken = getInputWithFallback("slack-access-token");
     return new web_api_1.WebClient(accessToken);
 }
-function buildCommit() {
+function buildDeploymentEvent() {
+    const prUrl = getInputWithFallback("pr-url");
+    // If pr-url is present, it's a deployment request (PR event)
+    if (prUrl) {
+        return {
+            eventType: "deployment_requested",
+            prUrl,
+            prNumber: getInputWithFallback("pr-number"),
+            prTitle: getInputWithFallback("pr-title"),
+            prAuthorUsername: getInputWithFallback("pr-author-username"),
+            prBody: getInputWithFallback("pr-body"),
+        };
+    }
+    // Otherwise, it's a deployment completion (commit event)
     return {
+        eventType: "deployment_completed",
         url: getInputWithFallback("commit-url"),
         authorUsername: getInputWithFallback("commit-author-username"),
         authorEmail: getInputWithFallback("commit-author-email"),
         commitMessage: getInputWithFallback("commit-message"),
     };
 }
-function buildSlackMessage(commit, commitMessage) {
-    const baseUrl = `<${commit.url}|${commitMessage.environment}>`;
-    const author = commit.authorUsername !== "" ? ` by _${commit.authorUsername}_` : "";
+function buildSlackMessage(event, commitMessage) {
+    const isDeploymentCompleted = event.eventType === "deployment_completed";
+    const url = isDeploymentCompleted ? event.url : event.prUrl;
+    const author = isDeploymentCompleted
+        ? (event.authorUsername !== "" ? event.authorUsername : "")
+        : event.prAuthorUsername;
+    const baseUrl = `<${url}|${commitMessage.environment}>`;
+    const authorText = author !== "" ? ` by _${author}_` : "";
+    // Action verb and emoji based on event type
+    const actionVerb = isDeploymentCompleted ? "Deployed" : "Awaiting approval to deploy";
+    const emoji = isDeploymentCompleted ? ":rocket:" : ":hourglass_flowing_sand:";
     switch (commitMessage.type) {
         case commit_parser_1.CommitType.VERSION:
             if (commitMessage.domain === "multiple") {
-                return `:rocket: Deployed multiple services version \`${commitMessage.version}\` to ${baseUrl}${author}`;
+                return `${emoji} ${actionVerb} multiple services version \`${commitMessage.version}\` to ${baseUrl}${authorText}`;
             }
-            return `:rocket: Deployed ${commitMessage.domain} \`${commitMessage.service}\` version \`${commitMessage.version}\` to ${baseUrl}${author}`;
+            return `${emoji} ${actionVerb} ${commitMessage.domain} \`${commitMessage.service}\` version \`${commitMessage.version}\` to ${baseUrl}${authorText}`;
         case commit_parser_1.CommitType.CONFIG:
             if (commitMessage.domain === "multiple" && commitMessage.service === "config") {
-                return `:gear: Deployed config changes to ${baseUrl}${author}`;
+                return `:gear: ${actionVerb} config changes to ${baseUrl}${authorText}`;
             }
             if (commitMessage.service === "services") {
-                return `:gear: Deployed ${commitMessage.domain} services config changes to ${baseUrl}${author}`;
+                return `:gear: ${actionVerb} ${commitMessage.domain} services config changes to ${baseUrl}${authorText}`;
             }
-            return `:gear: Deployed ${commitMessage.domain} \`${commitMessage.service}\` config changes to ${baseUrl}${author}`;
+            return `:gear: ${actionVerb} ${commitMessage.domain} \`${commitMessage.service}\` config changes to ${baseUrl}${authorText}`;
         case commit_parser_1.CommitType.MULTIPLE:
             if (commitMessage.domain === "multiple") {
-                return `:rocket: Deployed multiple services to ${baseUrl}${author}`;
+                return `${emoji} ${actionVerb} multiple services to ${baseUrl}${authorText}`;
             }
             if (commitMessage.version === "multiple-envs") {
-                return `:rocket: Deployed ${commitMessage.domain} services to multiple environments${author}`;
+                return `${emoji} ${actionVerb} ${commitMessage.domain} services to multiple environments${authorText}`;
             }
-            return `:rocket: Deployed ${commitMessage.domain} services to ${baseUrl}${author}`;
+            return `${emoji} ${actionVerb} ${commitMessage.domain} services to ${baseUrl}${authorText}`;
         default:
             // Fallback to original format
-            return `:rocket: Deployed ${commitMessage.domain} \`${commitMessage.service}\` version \`${commitMessage.version}\` to ${baseUrl}${author}`;
+            return `${emoji} ${actionVerb} ${commitMessage.domain} \`${commitMessage.service}\` version \`${commitMessage.version}\` to ${baseUrl}${authorText}`;
     }
 }
 function sendMessageToChannel(client, slackChannel, message) {

@@ -1,7 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CommitType = void 0;
+exports.getDeploymentMessageTitle = getDeploymentMessageTitle;
 exports.getCommitMessageTitle = getCommitMessageTitle;
+exports.isDeploymentEvent = isDeploymentEvent;
 exports.isDeploymentCommit = isDeploymentCommit;
 var CommitType;
 (function (CommitType) {
@@ -9,6 +11,13 @@ var CommitType;
     CommitType["CONFIG"] = "config";
     CommitType["MULTIPLE"] = "multiple";
 })(CommitType || (exports.CommitType = CommitType = {}));
+function getDeploymentMessageTitle(event) {
+    const message = event.eventType === "deployment_completed"
+        ? event.commitMessage
+        : event.prTitle;
+    return message.split("\n")[0];
+}
+// Legacy function for backward compatibility
 function getCommitMessageTitle(commit) {
     return commit.commitMessage.split("\n")[0];
 }
@@ -149,9 +158,9 @@ function matchLegacyV2Format(commitTitle) {
     }
     return null;
 }
-// Main orchestrator function
-function isDeploymentCommit(commit) {
-    const commitTitle = getCommitMessageTitle(commit);
+// New main orchestrator function for all deployment events
+function isDeploymentEvent(event) {
+    const commitTitle = getDeploymentMessageTitle(event);
     // Array of matcher functions in priority order
     const matchers = [
         matchSingleServiceWithVersion,
@@ -184,4 +193,8 @@ function isDeploymentCommit(commit) {
             environment: "",
         },
     };
+}
+// Legacy function for backward compatibility with existing tests
+function isDeploymentCommit(commit) {
+    return isDeploymentEvent(commit);
 }
