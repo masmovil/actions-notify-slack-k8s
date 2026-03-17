@@ -32,14 +32,14 @@ function createCommit(message: string): Commit {
 }
 
 // Helper function to create PR test objects
-function createPullRequest(body: string, prNumber = "12345"): PullRequestDeployment {
+function createPullRequest(title: string, prNumber = "12345"): PullRequestDeployment {
   return {
     eventType: "deployment_requested",
     prUrl: `https://github.com/test/repo/pull/${prNumber}`,
     prNumber,
-    prTitle: "Deploy services",
+    prTitle: title,
     prAuthorUsername: "testuser",
-    prBody: body,
+    prBody: "```json\n[\n  {\n    \"domain\": \"test\",\n    \"service\": \"test-service\",\n    \"environment\": \"prod\"\n  }\n]\n```",
   };
 }
 

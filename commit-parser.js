@@ -14,7 +14,7 @@ var CommitType;
 function getDeploymentMessageTitle(event) {
     const message = event.eventType === "deployment_completed"
         ? event.commitMessage
-        : event.prBody;
+        : event.prTitle;
     return message.split("\n")[0];
 }
 // Legacy function for backward compatibility

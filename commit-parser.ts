@@ -37,7 +37,7 @@ export enum CommitType {
 export function getDeploymentMessageTitle(event: DeploymentEvent): string {
     const message = event.eventType === "deployment_completed"
         ? event.commitMessage
-        : event.prBody;
+        : event.prTitle;
     return message.split("\n")[0];
 }
 
