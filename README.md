@@ -27,18 +27,18 @@ This project is built with TypeScript and can be tested locally.
 ### Prerequisites
 
 - Node.js (v20 or later)
-- npm
+- pnpm
 
 ### Setup
 
 1. Install dependencies:
 ```bash
-npm install
+pnpm install
 ```
 
 2. Build the project:
 ```bash
-npm run build
+pnpm run build
 ```
 
 ### Testing
@@ -46,7 +46,7 @@ npm run build
 #### Unit Tests
 Run the Jest unit tests:
 ```bash
-npm test
+pnpm test
 ```
 
 #### Local Testing
@@ -66,7 +66,7 @@ cp .env.example .env
 
 3. Run the local test:
 ```bash
-npm run test:local
+pnpm run test:local
 ```
 
 This will execute the action using your `.env` values and send an actual Slack message.
@@ -75,7 +75,7 @@ This will execute the action using your `.env` values and send an actual Slack m
 
 Package the action for distribution:
 ```bash
-npm run package
+pnpm run package
 ```
 
 This creates a bundled `dist/index.js` file that GitHub Actions will execute.

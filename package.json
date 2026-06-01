@@ -1,6 +1,7 @@
 {
   "name": "actions-notify-slack-k8s",
   "version": "1.0.0",
+  "packageManager": "pnpm@10.33.4",
   "description": "Notify about kubernetes deployments via Slack",
   "main": "main.js",
   "scripts": {
@@ -9,8 +10,8 @@
     "format-check": "prettier --check '**/*.ts'",
     "package": "ncc build main.js --source-map --license licenses.txt --out dist",
     "test": "jest",
-    "test:local": "npm run build && node test-local.js",
-    "all": "npm run build && npm run format && npm run package && npm test"
+    "test:local": "pnpm run build && node test-local.js",
+    "all": "pnpm run build && pnpm run format && pnpm run package && pnpm run test"
   },
   "repository": {
     "type": "git",

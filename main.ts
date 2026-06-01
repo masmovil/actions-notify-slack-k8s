@@ -1,6 +1,11 @@
 import * as core from "@actions/core";
 import { WebClient } from "@slack/web-api";
-import { isDeploymentEvent, CommitType, type DeploymentEvent, type CommitMessageDetails } from "./commit-parser";
+import {
+  isDeploymentEvent,
+  CommitType,
+  type DeploymentEvent,
+  type CommitMessageDetails,
+} from "./commit-parser";
 
 // Load environment variables when running locally
 if (process.env.NODE_ENV !== "test") {
@@ -46,9 +51,10 @@ async function main(): Promise<void> {
     const { ok, commitMessage } = isDeploymentEvent(deploymentEvent);
 
     if (!ok) {
-      const message = deploymentEvent.eventType === "deployment_completed"
-        ? deploymentEvent.commitMessage
-        : deploymentEvent.prBody;
+      const message =
+        deploymentEvent.eventType === "deployment_completed"
+          ? deploymentEvent.commitMessage
+          : deploymentEvent.prBody;
       console.log("Event is not a deployment:", message);
       return;
     }
@@ -62,9 +68,10 @@ async function main(): Promise<void> {
     console.log("ts:", ts);
 
     // Add rest of the message if it exists (detailed info from commit/PR body)
-    const detailedMessage = deploymentEvent.eventType === "deployment_completed"
-      ? deploymentEvent.commitMessage
-      : deploymentEvent.prBody;
+    const detailedMessage =
+      deploymentEvent.eventType === "deployment_completed"
+        ? deploymentEvent.commitMessage
+        : deploymentEvent.prBody;
     const messageLines = detailedMessage.split("\n");
     if (messageLines.length > 1) {
       // Remove the message header
@@ -109,18 +116,25 @@ export function buildDeploymentEvent(): DeploymentEvent {
   };
 }
 
-function buildSlackMessage(event: DeploymentEvent, commitMessage: CommitMessageDetails): string {
+function buildSlackMessage(
+  event: DeploymentEvent,
+  commitMessage: CommitMessageDetails,
+): string {
   const isDeploymentCompleted = event.eventType === "deployment_completed";
   const url = isDeploymentCompleted ? event.url : event.prUrl;
   const author = isDeploymentCompleted
-    ? (event.authorUsername !== "" ? event.authorUsername : "")
+    ? event.authorUsername !== ""
+      ? event.authorUsername
+      : ""
     : event.prAuthorUsername;
 
   const baseUrl = `<${url}|${commitMessage.environment}>`;
   const authorText = author !== "" ? ` by _${author}_` : "";
 
   // Action verb and emoji based on event type
-  const actionVerb = isDeploymentCompleted ? "Deployed" : "Awaiting approval to deploy";
+  const actionVerb = isDeploymentCompleted
+    ? "Deployed"
+    : "Awaiting approval to deploy";
   const emoji = isDeploymentCompleted ? ":rocket:" : ":hourglass_flowing_sand:";
 
   switch (commitMessage.type) {
@@ -131,7 +145,10 @@ function buildSlackMessage(event: DeploymentEvent, commitMessage: CommitMessageD
       return `${emoji} ${actionVerb} ${commitMessage.domain} \`${commitMessage.service}\` version \`${commitMessage.version}\` to ${baseUrl}${authorText}`;
 
     case CommitType.CONFIG:
-      if (commitMessage.domain === "multiple" && commitMessage.service === "config") {
+      if (
+        commitMessage.domain === "multiple" &&
+        commitMessage.service === "config"
+      ) {
         return `:gear: ${actionVerb} config changes to ${baseUrl}${authorText}`;
       }
       if (commitMessage.service === "services") {

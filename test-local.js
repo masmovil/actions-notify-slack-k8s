@@ -10,7 +10,7 @@
  * Usage:
  * 1. Create a .env file in the project root
  * 2. Add SLACK_ACCESS_TOKEN and either commit or PR parameters
- * 3. Run: npm run test:local
+ * 3. Run: pnpm run test:local
  *
  * Example for commit event:
  *   SLACK_ACCESS_TOKEN=xoxb-your-token

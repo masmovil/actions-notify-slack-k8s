@@ -1,13 +1,18 @@
 /**
  * Unit tests for the action's main functionality, main.ts
  *
- * These should be run with the npm test command.
+ * These should be run with the pnpm test command.
  */
 
 import * as core from "@actions/core";
 import * as dotenv from "dotenv";
 import { WebClient } from "@slack/web-api";
-import { isDeploymentCommit, isDeploymentEvent, Commit, PullRequestDeployment } from "./commit-parser";
+import {
+  isDeploymentCommit,
+  isDeploymentEvent,
+  Commit,
+  PullRequestDeployment,
+} from "./commit-parser";
 
 // Load environment variables from .env file for local testing
 dotenv.config();
@@ -32,14 +37,18 @@ function createCommit(message: string): Commit {
 }
 
 // Helper function to create PR test objects
-function createPullRequest(title: string, prNumber = "12345"): PullRequestDeployment {
+function createPullRequest(
+  title: string,
+  prNumber = "12345",
+): PullRequestDeployment {
   return {
     eventType: "deployment_requested",
     prUrl: `https://github.com/test/repo/pull/${prNumber}`,
     prNumber,
     prTitle: title,
     prAuthorUsername: "testuser",
-    prBody: "```json\n[\n  {\n    \"domain\": \"test\",\n    \"service\": \"test-service\",\n    \"environment\": \"prod\"\n  }\n]\n```",
+    prBody:
+      '```json\n[\n  {\n    "domain": "test",\n    "service": "test-service",\n    "environment": "prod"\n  }\n]\n```',
   };
 }
 
@@ -84,7 +93,9 @@ describe("actions-notify-slack-k8s", () => {
 
   it("should detect deployment commit and extract details", () => {
     // Test the deployment commit parsing logic
-    const commit = createCommit("Deployed mas-billing api-billing version v1.37.0 to prod");
+    const commit = createCommit(
+      "Deployed mas-billing api-billing version v1.37.0 to prod",
+    );
 
     const result = isDeploymentCommit(commit);
 
@@ -150,7 +161,8 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should detect v2 deployment commit format and extract details", () => {
-    const commit = createCommit(`Deploy mas-billing rating-engine version v1.132.5 to prod
+    const commit =
+      createCommit(`Deploy mas-billing rating-engine version v1.132.5 to prod
 
 - serviceName: rating-engine
   version: v1.132.5
@@ -213,7 +225,9 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should detect single service config changes", () => {
-    const commit = createCommit("Deploy mas-billing api-billing config changes to prod");
+    const commit = createCommit(
+      "Deploy mas-billing api-billing config changes to prod",
+    );
 
     const result = isDeploymentCommit(commit);
 
@@ -237,7 +251,9 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should detect multiple services config changes in same domain", () => {
-    const commit = createCommit("Deploy mas-billing services config changes to sta");
+    const commit = createCommit(
+      "Deploy mas-billing services config changes to sta",
+    );
 
     const result = isDeploymentCommit(commit);
 
@@ -285,7 +301,9 @@ describe("actions-notify-slack-k8s", () => {
   });
 
   it("should detect grouped chart deployments", () => {
-    const commit = createCommit("Deploy mas-billing billing-chart version v2.1.0 to prod");
+    const commit = createCommit(
+      "Deploy mas-billing billing-chart version v2.1.0 to prod",
+    );
 
     const result = isDeploymentCommit(commit);
 
@@ -321,7 +339,9 @@ describe("actions-notify-slack-k8s", () => {
 
   describe("PR number handling", () => {
     it("should detect single service deployment with PR number", () => {
-      const commit = createCommit("Deploy mas-billing api-billing version v1.37.0 to prod (#12345)");
+      const commit = createCommit(
+        "Deploy mas-billing api-billing version v1.37.0 to prod (#12345)",
+      );
 
       const result = isDeploymentCommit(commit);
 
@@ -333,7 +353,9 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect single service config changes with PR number", () => {
-      const commit = createCommit("Deploy mas-billing api-billing config changes to prod (#54321)");
+      const commit = createCommit(
+        "Deploy mas-billing api-billing config changes to prod (#54321)",
+      );
 
       const result = isDeploymentCommit(commit);
 
@@ -345,7 +367,9 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect multiple services deployment with PR number", () => {
-      const commit = createCommit("Deploy mas-billing services to sta (#33955)");
+      const commit = createCommit(
+        "Deploy mas-billing services to sta (#33955)",
+      );
 
       const result = isDeploymentCommit(commit);
 
@@ -357,7 +381,9 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect multiple services config changes with PR number", () => {
-      const commit = createCommit("Deploy mas-billing services config changes to dev (#99999)");
+      const commit = createCommit(
+        "Deploy mas-billing services config changes to dev (#99999)",
+      );
 
       const result = isDeploymentCommit(commit);
 
@@ -369,7 +395,9 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect multiple environments deployment with PR number", () => {
-      const commit = createCommit("Deploy mas-billing services to sta and prod (#11111)");
+      const commit = createCommit(
+        "Deploy mas-billing services to sta and prod (#11111)",
+      );
 
       const result = isDeploymentCommit(commit);
 
@@ -405,7 +433,9 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect legacy v1 format with PR number", () => {
-      const commit = createCommit("Deployed mas-billing api-billing version v1.37.0 to prod (#88888)");
+      const commit = createCommit(
+        "Deployed mas-billing api-billing version v1.37.0 to prod (#88888)",
+      );
 
       const result = isDeploymentCommit(commit);
 
@@ -417,7 +447,9 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect legacy v2 format with PR number", () => {
-      const commit = createCommit("Deploy mas-billing rating-engine version v1.132.5 to prod (#71079)");
+      const commit = createCommit(
+        "Deploy mas-billing rating-engine version v1.132.5 to prod (#71079)",
+      );
 
       const result = isDeploymentCommit(commit);
 
@@ -459,7 +491,9 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should NOT match with extra text after PR number", () => {
-      const commit = createCommit("Deploy mas-billing services to sta (#33955) with extra text");
+      const commit = createCommit(
+        "Deploy mas-billing services to sta (#33955) with extra text",
+      );
 
       const result = isDeploymentCommit(commit);
 
@@ -469,8 +503,14 @@ describe("actions-notify-slack-k8s", () => {
     it("should handle PR numbers with varying digit lengths", () => {
       const testCases = [
         { message: "Deploy mas-billing services to prod (#1)", prNumber: "1" },
-        { message: "Deploy mas-billing services to prod (#123)", prNumber: "123" },
-        { message: "Deploy mas-billing services to prod (#123456)", prNumber: "123456" },
+        {
+          message: "Deploy mas-billing services to prod (#123)",
+          prNumber: "123",
+        },
+        {
+          message: "Deploy mas-billing services to prod (#123456)",
+          prNumber: "123456",
+        },
       ];
 
       testCases.forEach((testCase) => {
@@ -486,7 +526,9 @@ describe("actions-notify-slack-k8s", () => {
 
   describe("PR deployment request events", () => {
     it("should detect PR deployment request and extract details", () => {
-      const pr = createPullRequest("Deploy mas-billing api-billing version v1.37.0 to prod");
+      const pr = createPullRequest(
+        "Deploy mas-billing api-billing version v1.37.0 to prod",
+      );
 
       const result = isDeploymentEvent(pr);
 
@@ -498,7 +540,9 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect PR with config changes", () => {
-      const pr = createPullRequest("Deploy mas-billing api-billing config changes to sta");
+      const pr = createPullRequest(
+        "Deploy mas-billing api-billing config changes to sta",
+      );
 
       const result = isDeploymentEvent(pr);
 
@@ -522,7 +566,10 @@ describe("actions-notify-slack-k8s", () => {
     });
 
     it("should detect PR with PR number in body", () => {
-      const pr = createPullRequest("Deploy mas-billing services to prod (#54321)", "54321");
+      const pr = createPullRequest(
+        "Deploy mas-billing services to prod (#54321)",
+        "54321",
+      );
 
       const result = isDeploymentEvent(pr);
 
